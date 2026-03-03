@@ -12,6 +12,7 @@ Each skill owns a domain. **Invoke the skill using the Skill tool before working
 | `/itential-studio` | Building automation | Create/edit workflows, templates, command templates, projects. Run jobs. |
 | `/itential-devices` | Device operations | List devices, get configs, backup, diff, device groups, apply templates |
 | `/itential-golden-config` | Compliance | Golden config trees, config specs, compliance plans, grading, remediation |
+| `/iag` | Automation Gateway | Build IAG services (iagctl), call them from workflows (GatewayManager.runService) |
 | `/solution-design` | Spec-driven delivery | Entered from setup. Fork spec, design, refine, plan, build. |
 
 ### User Flow
