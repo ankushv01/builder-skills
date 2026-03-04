@@ -9,10 +9,12 @@ Each skill owns a domain. **Invoke the skill using the Skill tool before working
 | Skill | Owns | When to Use |
 |-------|------|-------------|
 | `/itential-setup` | **Entry point** | Always start here. Auth, bootstrap, then routes to explore or build-from-spec. |
-| `/itential-studio` | Building automation | Create/edit workflows, templates, command templates, projects. Run jobs. |
-| `/itential-devices` | Device operations | List devices, get configs, backup, diff, device groups, apply templates |
-| `/itential-golden-config` | Compliance | Golden config trees, config specs, compliance plans, grading, remediation |
-| `/iag` | Automation Gateway | Build IAG services (iagctl), call them from workflows (GatewayManager.runService) |
+| `/itential-studio` | Building automation | Create/edit workflows, templates, projects. Discover tasks from the palette. |
+| `/itential-workflow-engine` | Running workflows | Start/monitor jobs, utility tasks (query, merge, eval, childJob, forEach), $var resolution, workflow patterns, debugging. |
+| `/itential-mop` | Command validation | Command templates, analytic templates, eval types, RunCommandTemplate. |
+| `/itential-devices` | Device operations | List devices, get configs, backup, diff, device groups, apply templates. |
+| `/itential-golden-config` | Compliance | Golden config trees, config specs, compliance plans, grading, remediation. |
+| `/iag` | Automation Gateway | Build IAG services (iagctl), call them from workflows (GatewayManager.runService). |
 | `/solution-design` | Spec-driven delivery | Entered from setup. Fork spec, design, refine, plan, build. |
 
 ### User Flow
@@ -25,10 +27,16 @@ Each skill owns a domain. **Invoke the skill using the Skill tool before working
   │
   ├── "Build from a spec" → /solution-design
   │     Fork spec → Discover → Design → Refine → Plan → Build
-  │     Uses /itential-studio, /itential-devices, /itential-golden-config as needed
+  │     Uses /itential-studio, /itential-workflow-engine, /itential-mop,
+  │     /itential-devices, /itential-golden-config, /iag as needed
   │
   └── "Explore / build freestyle"
-        Use /itential-studio, /itential-devices, /itential-golden-config directly
+        /itential-studio — create workflows, templates, projects
+        /itential-workflow-engine — run jobs, wire tasks, debug
+        /itential-mop — command templates, validation checks
+        /itential-devices — device inventory, configs, backups
+        /itential-golden-config — compliance, golden config
+        /iag — IAG services (Python, Ansible, OpenTofu)
 ```
 
 **IMPORTANT: Invoke skills using the Skill tool** — don't just reference them in text. When you need to work with devices, invoke `/itential-devices`. When you need to build a workflow, invoke `/itential-studio`. The skills contain the API details you need. Without loading them, you're guessing.
@@ -142,6 +150,7 @@ When something fails: check `job.status`, check `job.error` array, look at `IAPe
 12. **API response shapes vary** — most POST/GET return `{message, data, metadata}`, but `GET /automation-studio/workflows` returns `{items, skip, limit, total}`. Always check the response shape before parsing
 13. **Project component types** — valid values: `workflow`, `template`, `transformation`, `jsonForm`, `mopCommandTemplate`, `mopAnalyticTemplate`
 14. **Use skills, don't reimplement** — each skill owns its domain
+15. **When unsure about ANY endpoint, method, or payload — check `openapi.json` FIRST.** Run `jq '.paths["/the/endpoint"]' {use-case}/openapi.json` to see the method, request body schema, and response schema. Don't guess, don't try variations, don't make up field names — look it up. The spec is always right.
 
 ## Helper JSON Templates
 

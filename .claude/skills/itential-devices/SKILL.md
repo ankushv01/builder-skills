@@ -10,6 +10,26 @@ Configuration Manager is the Itential Platform application for managing devices,
 
 For Golden Configurations, compliance, and grading, use `/itential-golden-config`.
 
+## Gotchas
+
+- `POST /configuration_manager/devices` is a **POST**, not GET — requires `{"options": {...}}` body
+- Device list is in the **`list`** field, not `devices` or `results`
+- Backup response returns `{status, message, id}` — the `id` is the backup's MongoDB insertedId
+- Apply config body has nested structure: `{"config": {"device": "...", "config": "..."}}` — config inside config
+- Diff endpoint is **PUT** `/configuration_manager/lookup_diff`, not POST. Supports `options.type`: `'line'`, `'word'` (default), `'char'`
+- Create group: `/devicegroup` (singular), list groups: `/deviceGroups` (plural)
+- `deviceNames` in create group is a **comma-separated string**, NOT an array: `"dev1, dev2"`
+- `provider` in backup can be a string OR an array depending on the adapter
+- Empty device config → backup silently not created (returns error, no backup stored)
+- Large configs auto-stored in GridFS — `rawConfig` field is empty in the document, config is in GridFS
+- Cannot delete device groups referenced by a Compliance Plan or Golden Config — deletion is blocked
+- Device group update only accepts: `name`, `devices`, `description`, `gbac` — other fields silently dropped
+- Duplicate group names blocked on create and rename
+- `searchDeviceGroups` caps page size at 100 regardless of requested limit
+- `getDeviceGroupById` accepts both ID and name — auto-detects which one you passed
+- Device template apply checks OS type compatibility — fails if device `ostype` doesn't match template's `deviceOSTypes`
+- Backup search uses regex by default — set `options.regex: false` for exact matching
+
 ## What is Configuration Manager?
 
 Configuration Manager handles the full lifecycle of device configuration:
@@ -55,7 +75,10 @@ Devices are discovered through adapters (e.g., IAG, Cisco DNA). Configuration Ma
 | GET | `/configuration_manager/devices/{name}/configuration` | Get current device configuration |
 | POST | `/configuration_manager/devices/{deviceName}/configuration` | Apply a config to a device |
 | POST | `/configuration_manager/devices/backups` | Backup device configuration |
-| GET | `/configuration_manager/devices/backups/list` | List all backed up devices |
+| POST | `/configuration_manager/backups` | Search/list backups with filtering and pagination |
+| GET | `/configuration_manager/backups/{id}` | Get a backup by ID |
+| PUT | `/configuration_manager/backups/{id}` | Update backup metadata (description, notes) |
+| DELETE | `/configuration_manager/backups` | Delete backups by array of IDs |
 | GET | `/configuration_manager/devices/{name}/isAlive` | Check if device is connected |
 
 **Get device details:**
@@ -145,9 +168,17 @@ POST /configuration_manager/devices/backups
   }
 }
 ```
-Response: `{"status": "success", "message": "Device IOS-CAT8KV-1 backed up successfully"}`
+Response:
+```json
+{
+  "status": "success",
+  "message": "Device IOS-CAT8KV-1 backed up successfully",
+  "id": "699b69e25ae7d527cda5ffe4"
+}
+```
+The `id` field is the backup's MongoDB ID — use it to retrieve the backup later.
 
-Note: the response contains `status` and `message` only. To get the backup ID, search backups for the device afterward.
+**Note:** If the device returns an empty configuration, the backup is NOT created and returns an error.
 
 **Backup structure** (GET `/configuration_manager/backups/{id}`):
 ```json
@@ -163,15 +194,55 @@ Note: the response contains `status` and `message` only. To get the backup ID, s
 }
 ```
 
-Note: `provider` is a string (not an array). Field is `_id` (with underscore).
+Note: `provider` can be a string or array depending on the adapter. For very large configs, `rawConfig` may be empty — the config is stored in GridFS (check `storage.type === 'gridfs'`).
 
-**List backed up devices:**
+**Search/list backups:**
 ```
-GET /configuration_manager/devices/backups/list
+POST /configuration_manager/backups
 ```
-Response is a **plain array** of device name strings:
 ```json
-["IOS-CAT8KV-1", "IOS-CAT8KV-2"]
+{
+  "options": {
+    "filter": { "name": "IOS-CAT8KV-1" },
+    "start": "0",
+    "limit": 25,
+    "sort": { "date": -1 },
+    "regex": true
+  }
+}
+```
+Response:
+```json
+{
+  "total": 3,
+  "list": [
+    { "_id": "699b69e25ae7d527cda5ffe4", "name": "IOS-CAT8KV-1", "date": "...", "description": "..." }
+  ]
+}
+```
+- `options.start` must be a string (not integer)
+- `options.regex` defaults to `true` (filter values use regex). Set `false` for exact matching.
+- Backups are in the `list` field.
+
+**Update backup metadata:**
+```
+PUT /configuration_manager/backups/{id}
+```
+```json
+{
+  "description": "Updated description",
+  "notes": "Updated notes"
+}
+```
+
+**Delete backups:**
+```
+DELETE /configuration_manager/backups
+```
+```json
+{
+  "backupIds": ["699b69e25ae7d527cda5ffe4", "699b6c745ae7d527cda5ffe8"]
+}
 ```
 
 **Apply config to a device** (`POST /configuration_manager/devices/{deviceName}/configuration`):
@@ -201,6 +272,7 @@ PUT /configuration_manager/lookup_diff
 ```
 - `collection` - must be one of: `backups`, `nodes`, `deviceGroups`
 - `nextCollection` - must be one of: `devices`, `backups`, `nodes`, `deviceGroups`
+- `options` (optional) - `{"type": "word"}` where type is `"line"`, `"word"` (default), or `"char"`
 - Response is an array of `[operation, text]` tuples:
   - `0` = unchanged text
   - `1` = added text
@@ -236,6 +308,8 @@ Logical groupings of devices for running bulk compliance checks, golden config a
 | DELETE | `/configuration_manager/deviceGroups` | Delete device groups |
 | POST | `/configuration_manager/deviceGroups/{id}/devices` | Add devices to a group |
 | DELETE | `/configuration_manager/deviceGroups/{id}/devices` | Remove devices from a group |
+| POST | `/configuration_manager/deviceGroups/search` | Search groups with pagination |
+| GET | `/configuration_manager/groups/device/{deviceName}` | Find all groups containing a device |
 
 **Create a device group:**
 ```
@@ -245,7 +319,7 @@ POST /configuration_manager/devicegroup
 {
   "groupName": "Cisco Devices",
   "groupDescription": "All Cisco IOS devices in the lab",
-  "deviceNames": ["IOS-CAT8KV-1", "IOS-CSR-AWS-1"]
+  "deviceNames": "IOS-CAT8KV-1, IOS-CSR-AWS-1"
 }
 ```
 

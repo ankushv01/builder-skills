@@ -239,14 +239,18 @@ Execute the locked plan step by step.
 ### For Each Step
 
 1. **Invoke the skill using the Skill tool** — before building any asset, load the relevant skill:
-   - Workflows, templates, command templates, projects → invoke `/itential-studio`
+   - Create workflows, templates, projects → invoke `/itential-studio`
+   - Run/test workflows, utility tasks, wiring patterns → invoke `/itential-workflow-engine`
+   - Command templates, analytic templates → invoke `/itential-mop`
    - Devices, backups, diffs, device groups → invoke `/itential-devices`
    - Golden config, compliance → invoke `/itential-golden-config`
+   - IAG services → invoke `/iag`
    **You MUST invoke the skill before making API calls. Do not guess.**
 2. **Start from a helper template** — read the matching file from `helpers/` first, then modify:
-   - Command template → `helpers/create-command-template.json`
+   - Command template → `helpers/create-command-template.json` (see `/itential-mop`)
    - Jinja2 template → `helpers/create-template-jinja2.json`
    - Workflow → `helpers/create-workflow.json` + `helpers/workflow-task-application.json` / `helpers/workflow-task-adapter.json`
+   - childJob task → `helpers/workflow-task-childjob.json` (see `/itential-workflow-engine`)
    - Project → `helpers/create-project.json` + `helpers/add-components-to-project.json`
    **Do NOT build JSON from scratch. Helpers have correct structure and field names.**
 3. **Save locally** — write JSON to `{use-case}/` before sending to the platform
@@ -265,25 +269,25 @@ Execute the locked plan step by step.
 ### Patterns to Follow
 
 **Variable resolution:**
-- `$var.job.x` only resolves as a direct incoming variable value
-- `$var` inside nested objects does NOT resolve → use `merge` task
+- `$var.job.x` only resolves as a direct top-level incoming variable value
+- `$var` inside nested objects does NOT resolve — use `merge`, `makeData`, `query`, or other utility tasks to build the object, then pass it as a top-level `$var` reference
 
 **childJob:**
 - `actor` must be `"job"` not `"Pronghorn"`
-- Variables: `{"task": "job", "value": "varName"}` syntax, not `$var`
+- Variables: `{"task": "job", "value": "varName"}` syntax, NOT `$var.job.x`
 - Empty optionals: `""` not `null`
-- Never use `{"task": "static", "value": ["placeholder"]}` — the literal persists
 
 **evaluation:**
 - MUST have both `success` AND `failure` transitions
 
 **Error handling:**
-- Every task that can fail needs an error transition
+- Every adapter/external task needs an error transition — without it, errors produce "Job has no available transitions" and the job gets stuck
 - Use try-catch: `newVariable` on both success and error paths
 
 **Adapter naming:**
-- `app` from `apps/list` (e.g., `Servicenow`), NOT `tasks/list`
-- `adapter_id` from `health/adapters` instance name (e.g., `ServiceNow`)
+- `app` from `apps.json` (bootstrapped locally), NOT `tasks/list` — names can be completely different, not just casing
+- `adapter_id` from `adapters.json` instance name
+- Some products have multiple adapter apps — check `apps.json` and `environment.md` to resolve, ask the user when multiple options exist
 
 **Network device config:**
 - MOP command templates → checks and validation ONLY (show commands + rules)
@@ -316,12 +320,14 @@ The `{use-case}/` directory contains everything:
 | `wf-*.json`, `cmd-*.json`, `tmpl-*.json` | Built assets |
 
 Deliver:
-1. All components created and individually tested
-2. End-to-end test passed
-3. Acceptance criteria verified
-4. Project packaged with all components
-5. Access granted to the engineer's team
-6. Summary of what was built, how to run it, and what inputs it expects
+1. **Create the project FIRST** — `POST /automation-studio/projects` → get `projectId`
+2. Build all assets with names prefixed `@{projectId}: ` so childJob refs are correct from the start
+3. If assets were built in global scope, move them with `POST /projects/{id}/components/add` — then **fix childJob `workflow` refs** in parent workflows (the platform renames children but does NOT update parent references, causing "Cannot find workflow" errors)
+4. All components individually tested
+5. End-to-end test passed
+6. Acceptance criteria verified
+7. Access granted to the engineer's team
+8. Summary of what was built, how to run it, and what inputs it expects
 
 ---
 

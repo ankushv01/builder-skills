@@ -14,6 +14,20 @@ Write YAML → iagctl db import → Services available → Workflows call them
 
 ---
 
+## Gotchas
+
+- **`clusterId` must match** the IAG cluster config — discover with `GET /gateway_manager/v1/gateways/`
+- **`params` maps to decorator schema** — check with `iagctl run service <type> <name> --use`
+- **`inventory` is `""` (empty string)** when not targeting nodes, not `[]` or `null`
+- **OpenTofu `params` MUST include `"action": "apply"` or `"action": "destroy"`**
+- **`runService` result is JSON-RPC wrapped** — extract with `query` path `result.stdout`, not `stdout`
+- **`$var` doesn't resolve inside `newVariable` objects** — use separate `query` tasks instead
+- **Secrets in YAML files contain raw values** — prefer `iagctl create secret --prompt-value`. Keep `secrets:` out of `services.yaml` so `--force` never overwrites them.
+- **Import is additive** — use `--force` to overwrite existing services
+- **`--force` overwrites secrets too** — placeholder secrets replace real ones
+- **Decorators reject unknown params** — every `--set` key must exist in the decorator schema
+- **Validate first** — always run `iagctl db import file.yaml --validate` before importing
+
 ## How It Works
 
 1. **Write a YAML service file** — defines repos, decorators, secrets, services
@@ -654,17 +668,14 @@ secrets:
 - [ ] Top-level `secrets:` section removed from `services.yaml` if using `--force` imports
 - [ ] Service, decorator, repo names follow team naming convention
 
-## Common Pitfalls
+## Helper Templates
 
-- **Read helper templates first** — `helpers/iag/` has examples for every service type
-- **`clusterId` must match** the IAG cluster config — discover with `GET /gateway_manager/v1/gateways/`
-- **`params` maps to decorator schema** — check with `iagctl run service <type> <name> --use`
-- **`inventory` is `""` (empty string)** when not targeting nodes, not `[]` or `null`
-- **OpenTofu `params` MUST include `"action": "apply"` or `"action": "destroy"`**
-- **`runService` result is JSON-RPC wrapped** — extract with `query` path `result.stdout`, not `stdout`
-- **`$var` doesn't resolve inside `newVariable` objects** — use separate `query` tasks instead
-- **Secrets in YAML files contain raw values** — prefer `iagctl create secret --prompt-value` for sensitive data. Better yet, keep `secrets:` out of `services.yaml` entirely so `--force` never overwrites them.
-- **Import is additive** — use `--force` to overwrite existing services
-- **`--force` overwrites secrets too** — if your YAML has placeholder secrets, `--force` replaces real ones with placeholders
-- **Decorators reject unknown params** — every `--set` key must exist in the decorator schema or IAG returns `extra input found`
-- **Validate first** — always run `iagctl db import file.yaml --validate` before importing
+**Always start from a helper template.** Read the matching example from `helpers/iag/` first, then modify:
+
+| File | Purpose |
+|------|---------|
+| `helpers/iag/example-python-service.yaml` | Python script service |
+| `helpers/iag/example-ansible-service.yaml` | Ansible playbook service |
+| `helpers/iag/example-opentofu-service.yaml` | OpenTofu plan service |
+| `helpers/iag/example-multi-service-chain.yaml` | Multi-service orchestration |
+| `helpers/iag/service-file-schema.md` | Full YAML schema reference |

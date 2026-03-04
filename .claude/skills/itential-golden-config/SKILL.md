@@ -8,6 +8,23 @@ argument-hint: "[action or tree-name]"
 
 Golden Configurations define the "desired state" for device configurations. They enable compliance checking, grading, and remediation of configuration drift across your network.
 
+## Gotchas
+
+- `deviceType` must match exactly: `"cisco-ios"` not `"Cisco IOS"` or `"ios"`
+- `variables` in `PUT /configuration_manager/node/config` must be a **JSON object**, not a string
+- `updateVariables` boolean is **REQUIRED** in node config update — omitting it silently skips variable merge
+- Compliance run is **async** — returns `batchId`, not the report. Poll with `GET /compliance_reports/batch/{batchId}`
+- Plan instance results are inside `groups[].plans[]`, not top-level
+- `nodeId` in compliance plan is the **`configId`**, NOT the node name — get it from the tree version response
+- Node path uses node **name** separated by `/` — root varies by tree (e.g., `base`, `Global`)
+- Parser name must match the device's `ostype` or compliance parsing produces wrong results
+- Parser `template` must reference an existing parser — list with `GET /configurations/parser`
+- Parser lexRules are validated with `safe-regex` — unsafe patterns (catastrophic backtracking) are rejected
+- Config spec regex patterns need escaped backslashes in JSON (`"\\d+"` not `"\d+"`)
+- Duplicate tree names blocked — `"A tree with the name already exists"`
+- Node path leading `/` is auto-stripped — `/base/DataCenter` and `base/DataCenter` are equivalent
+- Creating a new tree version requires a `base` parameter specifying which version to clone from
+
 ## What is Golden Config?
 
 Golden Config provides a hierarchical, version-controlled system for defining what device configurations should look like:
@@ -56,7 +73,13 @@ A device assigned to `Atlanta` is checked against **all inherited specs**: `Glob
 | PUT | `/configuration_manager/configs/{treeId}` | Update tree properties |
 | PUT | `/configuration_manager/configs/{treeId}/{version}` | Update tree version properties |
 | DELETE | `/configuration_manager/configs/{treeId}` | Delete a tree |
+| DELETE | `/configuration_manager/configs` | Bulk delete trees by IDs |
 | DELETE | `/configuration_manager/configs/{treeId}/{version}` | Delete a tree version |
+| POST | `/configuration_manager/configs/{treeId}` | Create a new tree version (clone from existing) |
+| POST | `/configuration_manager/search/configs` | Search trees by name/deviceType |
+| DELETE | `/configuration_manager/configs/variables/{treeId}/{version}` | Delete tree-level variables |
+| POST | `/configuration_manager/devices/device/trees` | Find which trees contain a specific device |
+| POST | `/configuration_manager/devices/tree` | List all devices assigned to a tree |
 | POST | `/configuration_manager/export/goldenconfigs` | Export a tree |
 | POST | `/configuration_manager/import/goldenconfigs` | Import tree documents |
 
@@ -386,6 +409,8 @@ Parsers define how raw CLI configuration text is tokenized into words and lines 
 | POST | `/configuration_manager/configurations/parser/search` | Search for a parser |
 | PUT | `/configuration_manager/configurations/parser` | Update a parser |
 | DELETE | `/configuration_manager/configurations/parser` | Delete a parser |
+| DELETE | `/configuration_manager/configurations/parsers` | Bulk delete parsers by ID array |
+| POST | `/configuration_manager/import/parsers` | Import parser documents |
 
 **Config parser structure:**
 ```json
@@ -403,8 +428,8 @@ Parsers define how raw CLI configuration text is tokenized into words and lines 
 ```
 
 - `name` - Parser name (typically matches the OS type)
-- `template` - Base parser template to inherit rules from
-- `lexRules` - Array of `[regex_pattern, token_type]` pairs. Token types: `end_line`, `word`, `comment`
+- `template` - Base parser template to inherit rules from (e.g., `'cisco-ios'`). List available parsers with `GET /configuration_manager/configurations/parser`.
+- `lexRules` - Array of `[regex_pattern, token_type]` pairs. Token types: `end_line`, `word`, `comment`. Patterns are validated with `safe-regex` — unsafe patterns are rejected.
 
 ## Compliance Plans
 
@@ -421,6 +446,7 @@ Compliance plans group golden config nodes with their target devices into a runn
 | DELETE | `/configuration_manager/compliance_plans/nodes` | Remove nodes from a compliance plan |
 | POST | `/configuration_manager/search/compliance_plans` | Search compliance plans |
 | POST | `/configuration_manager/search/compliance_plan_instances` | Search plan run instances |
+| POST | `/configuration_manager/import/plans` | Import compliance plan documents |
 
 **Create a compliance plan:**
 ```
@@ -573,6 +599,10 @@ Results of compliance checks showing what passed, what failed, and what needs re
 | GET | `/configuration_manager/compliance_reports/tree/{treeId}` | Summarize reports for a tree |
 | GET | `/configuration_manager/compliance_reports/node/{treeId}/{nodePath}` | Summarize reports for a node |
 | POST | `/configuration_manager/compliance_reports/backups` | Run compliance on backup configs |
+| POST | `/configuration_manager/compliance_reports/config` | Run compliance against a raw config string |
+| POST | `/configuration_manager/compliance_reports/details` | Get details of multiple reports at once |
+| POST | `/configuration_manager/compliance_reports/history/backups` | Compliance report history for backups |
+| POST | `/configuration_manager/compliance_reports/query/history` | Paginated grading history |
 
 **Run compliance:**
 ```
@@ -596,6 +626,23 @@ Response (async - compliance runs in background):
   "batchId": "699b70d55ae7d527cda5fff4"
 }
 ```
+
+**Run compliance against a raw config string** (without fetching from device):
+```
+POST /configuration_manager/compliance_reports/config
+```
+```json
+{
+  "options": {
+    "treeId": "699b70325ae7d527cda5fff0",
+    "version": "initial",
+    "nodePath": "base/DataCenter/Atlanta",
+    "deviceName": "IOS-CAT8KV-1",
+    "configuration": "service password-encryption\naaa new-model\n..."
+  }
+}
+```
+Useful for testing compliance against a config you already have (e.g., from a backup or generated config) without connecting to the device.
 
 **Get batch results** (returns array of report summaries):
 ```

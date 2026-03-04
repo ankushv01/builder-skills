@@ -92,6 +92,13 @@ Tokens expire. If you get authentication errors mid-session, re-authenticate.
 
 ---
 
+## Gotchas
+
+- OAuth MUST use `Content-Type: application/x-www-form-urlencoded`, not JSON
+- Tokens expire mid-session — if you get auth errors, re-authenticate
+- `tasks/list` `app` field has WRONG casing for adapters — use `apps/list` for correct names
+- OpenAPI spec is ~1.5MB — search it locally with `jq`, never load into context
+
 ## Step 2: Choose Your Path
 
 Once authenticated, ask: **"Are you exploring or building from a spec?"**
@@ -122,9 +129,12 @@ curl -s "{BASE}/health/applications?token=TOKEN" > {use-case}/applications.json
 ```
 
 Present a quick summary (adapters running, app count, task count) and point them to the skills:
-- **`/itential-studio`** — workflows, templates, command templates, projects
+- **`/itential-studio`** — create workflows, templates, projects, discover tasks
+- **`/itential-workflow-engine`** — run/test workflows, utility tasks, wiring patterns, debugging
+- **`/itential-mop`** — command templates, analytic templates, validation checks
 - **`/itential-devices`** — devices, backups, diffs, device groups
 - **`/itential-golden-config`** — golden config, compliance, remediation
+- **`/iag`** — IAG services (Python, Ansible, OpenTofu)
 
 ### Path B: Build from a Spec
 

@@ -1,5 +1,5 @@
 {
-  "_comment": "Template for a childJob task. Calls another workflow as a sub-job. actor MUST be 'job', task MUST be empty string. The engine auto-sets task at runtime. Fill in incoming.workflow with the child workflow name. Set incoming.variables with data to pass. For looping, set incoming.data_array and incoming.loopType ('parallel' or 'sequential').",
+  "_comment": "Template for a childJob task. actor MUST be 'job', task MUST be empty string (engine auto-sets at runtime). Variables use {task, value} syntax — NOT $var. Example: {\"task\": \"job\", \"value\": \"myVar\"} passes the parent's job variable 'myVar' to the child. Use {\"task\": \"static\", \"value\": \"literal\"} for static values. job_details is often empty — child results stay in the child job's variables unless the child explicitly sets job_output.",
   "name": "childJob",
   "canvasName": "childJob",
   "summary": "Run Child Automation",
@@ -12,8 +12,13 @@
   "variables": {
     "incoming": {
       "task": "",
-      "workflow": "$var.job.childWorkflowName",
-      "variables": {},
+      "workflow": "Child Workflow Name",
+      "variables": {
+        "childInputVar": {
+          "task": "job",
+          "value": "parentJobVar"
+        }
+      },
       "data_array": "",
       "transformation": "",
       "loopType": ""
