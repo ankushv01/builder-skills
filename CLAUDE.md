@@ -47,12 +47,23 @@ Each skill owns a domain. **Invoke the skill using the Skill tool before working
 
 **Skills** teach patterns, workflows, and know-how (how to build a childJob, how to wire variables, how to test).
 
-**`openapi.json`** has every endpoint, method, request body, and response schema. Pulled during bootstrap, stored locally in the use-case directory.
+**`openapi.json`** has every endpoint, method, request body, and response schema. Pull it locally if not already present, then search — never guess.
+
+**How to get it:**
+```bash
+# OAuth (cloud)
+curl -s "{BASE}/help/openapi?url={ENCODED_BASE}" -H "Authorization: Bearer {TOKEN}" > openapi.json
+
+# Local dev
+curl -s "{BASE}/help/openapi?url={ENCODED_BASE}&token={TOKEN}" > openapi.json
+```
+The bootstrap script does this automatically. If you're working outside bootstrap, fetch it yourself.
 
 **Before making any API call:**
 1. Check the relevant skill for the pattern
 2. Search `openapi.json` locally to confirm the endpoint, method, request body, and response schema — `jq '.paths["/the/endpoint"]'`
-3. Never hardcode API assumptions — the spec is the source of truth
+3. **Check the body wrapper** — most Itential APIs wrap the body in a top-level key. Find it: `jq '.paths["/the/endpoint"].post.requestBody.content["application/json"].schema.properties | keys'` → returns the wrapper name (e.g., `["role"]` means `{role: {...}}`)
+4. Never hardcode API assumptions — the spec is the source of truth
 
 **Before fetching task schemas:**
 1. Check if `{use-case}/task-schemas.json` exists — search it first with `jq` or `grep`
@@ -153,6 +164,8 @@ When something fails: check `job.status`, check `job.error` array, look at `IAPe
 13. **Project component types** — valid values: `workflow`, `template`, `transformation`, `jsonForm`, `mopCommandTemplate`, `mopAnalyticTemplate`
 14. **Use skills, don't reimplement** — each skill owns its domain
 15. **When unsure about ANY endpoint, method, or payload — check `openapi.json` FIRST.** Run `jq '.paths["/the/endpoint"]' {use-case}/openapi.json` to see the method, request body schema, and response schema. Don't guess, don't try variations, don't make up field names — look it up. The spec is always right.
+16. **If `openapi.json` is not local, fetch it** — `GET /help/openapi?url={ENCODED_BASE}` and save it. Then search locally.
+17. **If the openapi schema is empty for an endpoint** — check the corresponding POST/PUT endpoint's schema for the wrapper pattern. As a last resort, send `{}` and read the `"Missing Params"` error — it lists every required field with name, type, and examples.
 
 ## Helper JSON Templates
 
