@@ -1,0 +1,54 @@
+decorators:
+  - name: config-deploy-decorator
+    schema:
+      $id: root
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      required:
+        - target_host
+        - config_template
+      properties:
+        target_host:
+          type: string
+          description: Target device hostname
+        config_template:
+          type: string
+          description: Config template name to apply
+        dry_run:
+          type: boolean
+          default: false
+          description: Check mode — report changes without applying
+
+repositories:
+  - name: ansible-playbooks
+    url: git@github.com:org/ansible-network.git
+    reference: main
+    private-key-name: git-ssh-key
+
+secrets:
+  - name: git-ssh-key
+    value: "REPLACE_WITH_SSH_PRIVATE_KEY"
+  - name: vault-password
+    value: "REPLACE_WITH_VAULT_PASSWORD"
+
+services:
+  - name: deploy-config
+    type: ansible-playbook
+    description: Deploy network config using Ansible
+    playbooks:
+      - deploy.yml
+    working-directory: playbooks
+    repository: ansible-playbooks
+    decorator: config-deploy-decorator
+    tags:
+      - network
+      - config
+    secrets:
+      - name: vault-password
+        type: env
+        target: ANSIBLE_VAULT_PASSWORD
+    runtime:
+      inventory:
+        - ./inventory.yml
+      diff: true
+      forks: 10

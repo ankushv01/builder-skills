@@ -1,0 +1,51 @@
+decorators:
+  - name: infra-deploy-decorator
+    schema:
+      $id: root
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      required:
+        - environment
+        - region
+      properties:
+        environment:
+          type: string
+          description: Target environment
+          enum:
+            - dev
+            - staging
+            - production
+        region:
+          type: string
+          description: Cloud region
+        instance_count:
+          type: integer
+          default: 1
+          description: Number of instances to deploy
+
+repositories:
+  - name: terraform-infra
+    url: https://github.com/org/terraform-modules.git
+    reference: main
+
+services:
+  - name: deploy-infrastructure
+    type: opentofu-plan
+    description: Deploy cloud infrastructure with OpenTofu
+    working-directory: environments/aws
+    repository: terraform-infra
+    decorator: infra-deploy-decorator
+    tags:
+      - cloud
+      - infrastructure
+    plan-vars:
+      - "instance_type=t2.micro"
+    plan-var-files:
+      - "common.tfvars"
+    secrets:
+      - name: aws-access-key
+        type: env
+        target: TF_VAR_aws_access_key
+      - name: aws-secret-key
+        type: env
+        target: TF_VAR_aws_secret_key

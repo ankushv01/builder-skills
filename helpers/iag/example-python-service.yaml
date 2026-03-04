@@ -1,0 +1,37 @@
+decorators:
+  - name: device-info-decorator
+    schema:
+      $id: root
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      required:
+        - device_ip
+      properties:
+        device_ip:
+          type: string
+          description: Target device IP address
+        device_type:
+          type: string
+          description: Device OS type
+          enum:
+            - ios
+            - nxos
+            - eos
+
+repositories:
+  - name: my-automation-repo
+    url: https://github.com/org/automation-scripts.git
+    reference: main
+    description: Network automation Python scripts
+
+services:
+  - name: device-info
+    type: python-script
+    description: Gathers device facts (hostname, OS, interfaces)
+    filename: main.py
+    working-directory: device-info
+    repository: my-automation-repo
+    decorator: device-info-decorator
+    tags:
+      - network
+      - discovery
