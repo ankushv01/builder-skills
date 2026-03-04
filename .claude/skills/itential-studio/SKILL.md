@@ -266,10 +266,12 @@ POST /automation-studio/projects/{projectId}/components/add
   "mode": "move"
 }
 ```
-- `mode`: `"move"` (move into project) or `"copy"` (copy into project)
+- `mode`: two options:
+  - `"copy"` — asset stays in global scope AND a copy is added to the project. Both remain accessible.
+  - `"move"` — asset is removed from global scope and only exists in the project.
 - `folder`: must start with `/`, use `"/"` for root
 - `reference`: the `_id` of the asset being added
-- **WARNING: Moving breaks childJob refs.** Assets get renamed with `@projectId:` prefix and new `_id`, but internal references (childJob `workflow` fields) are NOT updated. See the "Create project FIRST" gotcha below for the fix pattern.
+- **Both modes rename assets** with `@projectId:` prefix and assign new `_id` values. Internal references (childJob `workflow` fields, template names) are NOT updated. See the "Create project FIRST" gotcha below for the fix pattern.
 
 **Update project membership (PATCH):**
 ```
