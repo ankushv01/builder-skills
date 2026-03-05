@@ -1,0 +1,310 @@
+{
+  "name": "Device Info",
+  "tasks": {
+    "workflow_start": {
+      "name": "workflow_start",
+      "groups": [],
+      "nodeLocation": {
+        "x": -84,
+        "y": 612
+      }
+    },
+    "a1b2": {
+      "name": "toUpperCase",
+      "canvasName": "toUpperCase",
+      "summary": "Uppercase Device Name",
+      "description": "",
+      "location": "Application",
+      "locationType": null,
+      "app": "WorkFlowEngine",
+      "type": "operation",
+      "displayName": "WorkFlowEngine",
+      "variables": {
+        "incoming": {
+          "str": "$var.job.deviceName"
+        },
+        "outgoing": {
+          "uppercaseString": "$var.job.upperName"
+        },
+        "error": "",
+        "decorators": []
+      },
+      "groups": [],
+      "actor": "Pronghorn",
+      "scheduled": false,
+      "nodeLocation": {
+        "x": 400,
+        "y": 600
+      }
+    },
+    "c3d4": {
+      "name": "stringConcat",
+      "canvasName": "concat",
+      "summary": "Build Device Label",
+      "description": "",
+      "location": "Application",
+      "locationType": null,
+      "app": "WorkFlowEngine",
+      "type": "operation",
+      "displayName": "WorkFlowEngine",
+      "variables": {
+        "incoming": {
+          "str": "Device: ",
+          "stringN": "$var.a1b2.uppercaseString"
+        },
+        "outgoing": {
+          "combinedStrings": "$var.job.deviceLabel"
+        },
+        "error": "",
+        "decorators": []
+      },
+      "groups": [],
+      "actor": "Pronghorn",
+      "scheduled": false,
+      "nodeLocation": {
+        "x": 700,
+        "y": 600
+      }
+    },
+    "workflow_end": {
+      "name": "workflow_end",
+      "groups": [],
+      "nodeLocation": {
+        "x": 1000,
+        "y": 600
+      }
+    },
+    "96f4": {
+      "name": "makeData",
+      "canvasName": "makeData",
+      "summary": "Convert input into a different data type",
+      "description": "This task takes an input and converts it to a different data type. For example, converting a number into a string.",
+      "location": "Application",
+      "locationType": null,
+      "app": "WorkFlowEngine",
+      "type": "automatic",
+      "displayName": "Tools",
+      "variables": {
+        "incoming": {
+          "input": "{ \"myKey\" : \"<!MYVAR!>\" }",
+          "outputType": "json",
+          "variables": {
+            "MYVAR": "hello"
+          }
+        },
+        "outgoing": {
+          "output": ""
+        }
+      },
+      "actor": "Pronghorn",
+      "groups": [],
+      "nodeLocation": {
+        "x": 0,
+        "y": 312
+      }
+    },
+    "8b9e": {
+      "name": "query",
+      "canvasName": "query",
+      "summary": "Query Data Using 'json-query' Format",
+      "description": "Query data using a dot/bracket notation string and a matching key/value pair.",
+      "location": "Application",
+      "locationType": null,
+      "app": "WorkFlowEngine",
+      "type": "operation",
+      "displayName": "WorkFlowEngine",
+      "variables": {
+        "incoming": {
+          "pass_on_null": false,
+          "query": "myKey",
+          "obj": "$var.96f4.output"
+        },
+        "outgoing": {
+          "return_data": null
+        }
+      },
+      "actor": "Pronghorn",
+      "groups": [],
+      "nodeLocation": {
+        "x": 300,
+        "y": 240
+      }
+    },
+    "949a": {
+      "name": "makeData",
+      "canvasName": "makeData",
+      "summary": "Convert input into a different data type",
+      "description": "This task takes an input and converts it to a different data type. For example, converting a number into a string.",
+      "location": "Application",
+      "locationType": null,
+      "app": "WorkFlowEngine",
+      "type": "automatic",
+      "displayName": "Tools",
+      "variables": {
+        "incoming": {
+          "input": "world  <!myVar2!>",
+          "outputType": "string",
+          "variables": "$var.37bf.merged_object"
+        },
+        "outgoing": {
+          "output": ""
+        }
+      },
+      "actor": "Pronghorn",
+      "groups": [],
+      "nodeLocation": {
+        "x": 350,
+        "y": 456
+      }
+    },
+    "37bf": {
+      "name": "merge",
+      "canvasName": "merge",
+      "summary": "Merge Data",
+      "description": "Merge data into a single object",
+      "location": "Application",
+      "locationType": null,
+      "app": "WorkFlowEngine",
+      "type": "operation",
+      "displayName": "WorkFlowEngine",
+      "variables": {
+        "incoming": {
+          "data_to_merge": [
+            {
+              "key": "myVar2",
+              "value": {
+                "task": "8b9e",
+                "variable": "return_data"
+              }
+            }
+          ]
+        },
+        "outgoing": {
+          "merged_object": ""
+        }
+      },
+      "actor": "Pronghorn",
+      "groups": [],
+      "nodeLocation": {
+        "x": 325,
+        "y": 348
+      }
+    }
+  },
+  "transitions": {
+    "workflow_start": {
+      "96f4": {
+        "state": "success",
+        "type": "standard"
+      }
+    },
+    "a1b2": {
+      "c3d4": {
+        "type": "standard",
+        "state": "success"
+      }
+    },
+    "c3d4": {
+      "workflow_end": {
+        "type": "standard",
+        "state": "success"
+      }
+    },
+    "workflow_end": {},
+    "96f4": {
+      "8b9e": {
+        "state": "success",
+        "type": "standard"
+      }
+    },
+    "8b9e": {
+      "37bf": {
+        "state": "success",
+        "type": "standard"
+      }
+    },
+    "949a": {
+      "a1b2": {
+        "state": "success",
+        "type": "standard"
+      }
+    },
+    "37bf": {
+      "949a": {
+        "state": "success",
+        "type": "standard"
+      }
+    }
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "deviceName": {
+        "title": "str",
+        "type": "string",
+        "examples": [
+          "nokia sr-os"
+        ]
+      }
+    },
+    "required": [
+      "deviceName"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "deviceName": {
+        "title": "str",
+        "type": "string",
+        "examples": [
+          "nokia sr-os"
+        ]
+      },
+      "_id": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{24}$"
+      },
+      "initiator": {
+        "type": "string"
+      },
+      "upperName": {
+        "title": "uppercaseString",
+        "type": "string",
+        "examples": [
+          "NOKIA SR-OS"
+        ]
+      },
+      "deviceLabel": {
+        "title": "combinedStrings",
+        "type": "string",
+        "examples": [
+          "card-type xcm-1s"
+        ]
+      }
+    }
+  },
+  "scenarios": [],
+  "type": "automation",
+  "canvasVersion": 3,
+  "font_size": 12,
+  "last_updated": "2026-03-05T06:03:40.324Z",
+  "last_updated_by": {
+    "firstname": "admin",
+    "inactive": false,
+    "provenance": "Pronghorn",
+    "username": "admin"
+  },
+  "lastUpdatedVersion": "5.55.5",
+  "uuid": "7e40fe02-4df5-41af-96b4-445a014918b2",
+  "created_by": {
+    "firstname": "admin",
+    "inactive": false,
+    "provenance": "Pronghorn",
+    "username": "admin"
+  },
+  "createdVersion": "5.55.5",
+  "tags": [],
+  "groups": [],
+  "migrationVersion": 7
+}

@@ -760,7 +760,50 @@ forEach --state:success--> nextTaskAfterLoop
 
 **Purpose:** Construct data objects with variable substitution using `<!var!>` syntax.
 
-**Key names must match source object keys exactly.** If the source has `ipaddress`, use `<!ipaddress!>` not `<!ip!>`.
+**Incoming variables:**
+- `input` (string) -- Template string with `<!variable_name!>` placeholders
+- `outputType` (string) -- Output type: `"string"`, `"json"`, `"number"`, `"boolean"`
+- `variables` (object) -- Object containing the values to substitute. Key names must match `<!var!>` names exactly.
+
+**Outgoing variables:**
+- `output` -- The result with all `<!var!>` placeholders replaced
+
+**The `variables` field must be a resolved object, not inline `$var` references.** Since `$var` doesn't resolve inside nested objects, you can't put `$var.job.x` as values inside the `variables` object. Instead, use a `merge` task first to build the variables object, then pass it via a top-level `$var` reference:
+
+```
+merge (build variables object) → makeData (use $var.taskId.merged_object as variables)
+```
+
+**Working pattern:**
+```json
+{
+  "a1b2": {
+    "name": "merge",
+    "variables": {
+      "incoming": {
+        "data_to_merge": [
+          {"key": "deviceLabel", "value": {"task": "job", "variable": "deviceLabel"}},
+          {"key": "vlanId", "value": {"task": "job", "variable": "vlanId"}}
+        ]
+      },
+      "outgoing": {"merged_object": null}
+    },
+    "actor": "Pronghorn"
+  },
+  "c3d4": {
+    "name": "makeData",
+    "variables": {
+      "incoming": {
+        "input": "REPORT: <!deviceLabel!> | VLAN: <!vlanId!>",
+        "outputType": "string",
+        "variables": "$var.a1b2.merged_object"
+      },
+      "outgoing": {"output": "$var.job.result"}
+    },
+    "actor": "Pronghorn"
+  }
+}
+```
 
 ### restCall
 
@@ -1129,29 +1172,55 @@ Missing assets cause runtime errors or draft workflows that can't be started.
 
 ## Gotchas
 
-Consolidated list of things that silently break or commonly cause errors:
+### Building Tasks
 
-1. **Task IDs must be hex `[0-9a-f]{1,4}`** -- non-hex IDs cause silent `$var` failure. The string is stored literally, never resolved.
-2. **`$var` inside nested objects doesn't resolve** -- `{"body": {"key": "$var.job.x"}}` stores the literal string, adapter gets `null`. Use `merge`, `makeData`, `query`, or other utility tasks to build the object from resolved values, then pass it as a top-level `$var` reference.
-3. **`evaluation` MUST have both success AND failure transitions** -- missing failure transition causes job error when condition is false.
-4. **childJob `actor` MUST be `"job"`** not `"Pronghorn"` -- wrong actor silently breaks execution.
-5. **childJob `task` field MUST be `""` (empty string)** -- the engine auto-sets it at runtime.
-6. **childJob `outgoing.job_details` MUST be `null`** -- do NOT override with `$var.job.X`.
-7. **`makeData` `<!var!>` names must match source object keys exactly** -- `<!ipaddress!>` not `<!ip!>` if the source key is `ipaddress`.
-8. **Validation errors = draft workflow** that cannot be started. Check the `errors` array after creation.
-9. **`forEach` last body task transition must be empty `{}`** -- do not connect it back to forEach.
-10. **Every task that can fail needs an error transition** -- tasks without error transitions cause "Job has no available transitions" error and the job gets stuck. Always add `"workflow_end": {"type": "standard", "state": "error"}` to adapter and external call tasks.
-11. **`push`/`pop`/`shift` operate on job variables by NAME (string), not `$var`** -- pass `"myArray"`, not `"$var.job.myArray"`.
-12. **`newVariable` value with `$var` stores the literal string, never resolves** -- use merge + query to build dynamic values.
-13. **`merge` uses `"variable"` not `"value"`** in `data_to_merge` reference items. `childJob` uses `"value"`. Do not mix them.
-14. **childJob `variables` MUST use `{"task":"job","value":"varName"}` syntax** -- NOT `$var.job.x`. Using `$var` inside the variables object causes the childJob to hang indefinitely (confirmed on live platform).
-15. **childJob `job_details` is often `null` or empty** -- it only gets populated if the child workflow explicitly writes to `job_output`. Most workflows don't. Child results stay in the child job's `variables` object.
-16. **Runtime-populated variables in childJob** -- wire childJob variables to reference the **task that produces the value** using `{"task": "taskId", "value": "outgoingVar"}`.
-17. **You can reuse the same task type** -- multiple instances with different hex task IDs (e.g., two `query` tasks with IDs `c3d4` and `e5f6`).
-18. **Use JSON files for API payloads** -- write request bodies to `.json` files and use `curl -d @file.json` to avoid shell escaping issues with `$var` references and nested quotes.
-19. **`status: complete` doesn't mean CLI commands succeeded** -- check `stdout` for actual command results. Errors like `% Invalid input detected` can appear in otherwise "complete" jobs.
-20. **Variable syntax differs by context** -- Jinja2 uses `{{ }}`, command templates use `<! !>`, workflow wiring uses `$var`, childJob uses `task/value` objects, merge/evaluation uses `task/variable` objects. Don't mix them.
-21. **"Cannot find workflow" after project move** -- moving workflows into a project renames them with `@projectId:` prefix and assigns new `_id` values, but does NOT update childJob `workflow` refs in parent workflows. Fix: update each childJob's `workflow` field to the new `@projectId: name`, then PUT the parent. Or avoid it entirely by creating the project first and building inside it.
+1. **`canvasName` must come from `tasks.json`** -- look it up: `jq '.[] | select(.name == "arrayPush") | .canvasName' {use-case}/tasks.json`. Some differ from the method name: `arrayPush` → `push`, `stringConcat` → `concat`. Never invent a canvasName — it controls the task icon in the UI.
+2. **Task IDs must be hex `[0-9a-f]{1,4}`** -- non-hex IDs cause silent `$var` failure.
+3. **Set `actor: "Pronghorn"` on adapter and application tasks** -- tasks like `merge`, `makeData`, `arrayPush`, `RunCommandTemplate`, `itential_cli`, `renderJinjaTemplate` need it. Omitting it can cause silent null outputs. Tasks like `evaluation`, `query`, `ViewData` work without it. When in doubt, include it.
+4. **Validation errors = draft workflow** that cannot be started. Check the `errors` array after creation.
+5. **Every task that can fail needs an error transition** -- without it, errors cause "Job has no available transitions" and the job gets stuck.
+
+### $var Resolution
+
+6. **`$var` inside nested objects doesn't resolve** -- `{"body": {"key": "$var.job.x"}}` stores the literal string. Use `merge`, `makeData`, or `query` to build the object, then pass it as a top-level `$var` reference.
+7. **`newVariable` value with `$var` stores the literal string** -- use merge + query to build dynamic values.
+8. **Variable syntax differs by context** -- Jinja2: `{{ }}`, command templates: `<! !>`, workflow wiring: `$var`, childJob: `{task, value}`, merge/evaluation: `{task, variable}`. Don't mix them.
+
+### childJob
+
+9. **`actor` MUST be `"job"`** -- not `"Pronghorn"`.
+10. **`task` MUST be `""` (empty string)** -- the engine auto-sets it at runtime.
+11. **`variables` MUST use `{"task":"job","value":"varName"}`** -- NOT `$var.job.x`. Using `$var` inside the variables object causes the childJob to hang indefinitely.
+12. **Pass task outputs using `{"task":"taskId","value":"outVar"}`** -- this references a previous task's outgoing variable at runtime.
+13. **`outgoing.job_details` MUST be `null`** -- do NOT override with `$var.job.X`.
+14. **`job_details` shows `""` in the job document but resolves at runtime** -- use `query` on `$var.taskId.job_details` to extract child output. The standard pattern: childJob → query. Don't be confused by the empty string in the GET response.
+15. **Validates child's `inputSchema.required` at creation time** -- missing required inputs cause validation error when creating the parent, not at runtime. Check the child's inputSchema before wiring.
+16. **"Cannot find workflow" after project move** -- project move renames workflows with `@projectId:` prefix but does NOT update childJob refs. Create the project first and build inside it.
+
+### merge
+
+17. **Uses `"variable"` not `"value"`** in `data_to_merge` reference items. childJob uses `"value"`. Don't mix them.
+18. **Requires at least 2 items** -- with 1 item, `merged_object` is silently `null` (no error). The downstream task fails instead, hiding the root cause.
+19. **Outgoing MUST declare `"merged_object": null`** -- empty `{}` makes the output unreachable via `$var.taskId.merged_object`.
+
+### makeData
+
+20. **`<!var!>` names must match source object keys exactly** -- `<!ipaddress!>` not `<!ip!>`.
+21. **Two different uses** -- (a) variable substitution: `input` is template with `<!var!>`, `variables` is the data object, `outputType: "string"`. (b) JSON parsing: `input` is a JSON string, `variables` is `""`, `outputType: "json"`. Both common in production.
+22. **`variables` must be a resolved object** -- use merge first to build it, then pass via `$var.taskId.merged_object`.
+
+### Other Tasks
+
+23. **`evaluation` MUST have both success AND failure transitions** -- missing failure transition causes job error.
+24. **`forEach` last body task transition must be empty `{}`** -- do not connect it back to forEach.
+25. **`push`/`pop`/`shift` operate on job variables by NAME** -- pass `"myArray"`, not `"$var.job.myArray"`.
+26. **Tasks with `incomplete` status are normal** -- untaken branches leave tasks incomplete. Not an error.
+
+### General
+
+27. **Reuse task types freely** -- multiple instances with different hex task IDs (e.g., two `query` tasks with IDs `c3d4` and `e5f6`). Use `canvasName` from palette, differentiate with `summary`.
+28. **`status: complete` doesn't mean CLI commands succeeded** -- check `stdout` for actual results.
+29. **Use JSON files for API payloads** -- `curl -d @file.json` avoids shell escaping issues with `$var` and nested quotes.
 
 ## Helper Templates
 
@@ -1161,8 +1230,13 @@ Consolidated list of things that silently break or commonly cause errors:
 | `helpers/workflow-task-adapter.json` | Adapter task template |
 | `helpers/workflow-task-application.json` | Application task template |
 | `helpers/create-workflow.json` | Workflow scaffold with start/end tasks |
+| `helpers/reference-parent-workflow.json` | **Reference:** parent with childJob → query → evaluation → newVariable → childJob → query. Read this when building multi-child workflows. |
+| `helpers/reference-child-workflow.json` | **Reference:** child with makeData(json) → query → merge(from task output) → makeData(string). Read this when wiring makeData or merge. |
+| `helpers/reference-merge-makedata.json` | **Reference:** merge → makeData pattern for template variable substitution. |
 
 **ALWAYS start from a helper template when creating workflow tasks.** Read the helper file first, then modify for your use case. Do NOT build task JSON from scratch.
+
+**When building multi-child workflows or wiring merge/makeData/query:** read the reference helpers first. They are complete working workflows exported from a tested project — correct `canvasName`, correct `actor`, correct variable syntax throughout.
 
 ## Developer Scenarios
 

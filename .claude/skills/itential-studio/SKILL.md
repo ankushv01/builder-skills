@@ -423,6 +423,7 @@ The body wraps the workflow in `{"automation": {...}}`. Required fields:
 
 - **Task IDs** are short hex strings (e.g., `303c`, `b647`). `workflow_start` and `workflow_end` are special reserved IDs.
 - **Task `name`** must be an actual method from a platform app or adapter (from the task palette). You cannot invent task names.
+- **Task `canvasName`** must come from the task palette's `canvasName` field — NOT the method name and NOT a custom label. `canvasName` controls the icon and display in the UI. Some differ from `name`: `arrayPush` → `push`, `stringConcat` → `concat`. Get it from `tasks/list`.
 - **Task `location`**: `"Application"` for platform apps, `"Adapter"` for adapters, `"Broker"` for broker calls
 - **Task `app`**: for Applications use the app name (e.g., `WorkFlowEngine`). For Adapters use the **`apps/list` `name`** value — NOT `tasks/list` (names can be completely different, not just casing). Resolve from `apps.json` and `adapters.json` (bootstrapped locally). When multiple adapter apps exist for the same product, ask the user.
 - **Task `locationType`**: `null` for Applications. For Adapters, same as `app` (from `apps/list`).
@@ -550,12 +551,12 @@ All list endpoints support these filtering parameters:
 | `include` | string | Comma-separated fields to include in response |
 | `exclude` | string | Comma-separated fields to exclude from response |
 | `equals` | string | Exact field match filter |
-| `contains` | string | Substring match filter |
+| `contains` | string | Substring match filter. **Requires field specifier:** `contains=name:searchterm` not just `contains=searchterm`. Without a field, it may return all results. |
 | `starts-with` | string | Prefix match filter |
 | `ends-with` | string | Suffix match filter |
 | `in` | string | Match one of given values |
 | `not-in` | string | Exclude given values |
-| `exclude-project-members` | boolean | Exclude items that belong to a project |
+| `exclude-project-members` | boolean | Exclude items that belong to a project (default: `true` — project workflows are hidden from listings unless set to `false`) |
 
 ## Gotchas
 
@@ -604,6 +605,10 @@ All list endpoints support these filtering parameters:
 }
 ```
 Extract `_id` from `response.created._id`.
+
+**Workflows moved into a project are hidden from listings.** `GET /automation-studio/workflows` excludes project-owned workflows by default. To find them, either use `exclude-project-members=false` or access directly via `GET /automation-studio/workflows/detailed/{urlEncodedName}`.
+
+**`copy` mode silently no-ops for pre-prefixed workflows.** If a workflow name already starts with `@projectId:`, using `mode: "copy"` returns success but doesn't actually add the component. Use `mode: "move"` instead.
 
 **Template and workflow list responses use `{items}` shape** — `GET /automation-studio/templates` and `GET /automation-studio/workflows` both return `{items, skip, limit, total}`, NOT `{message, data, metadata}`. Only project endpoints use the `{message, data, metadata}` wrapper.
 
