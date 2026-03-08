@@ -2,9 +2,9 @@
   "timestamp": "2026-03-08T10:45:00Z",
   "platform": "https://platform-6.0-dev.se.itential.io",
   "summary": {
-    "passed": 19,
+    "passed": 31,
     "failed": 0,
-    "total": 19,
+    "total": 31,
     "pass_rate": 100.0
   },
   "tests": {
@@ -88,6 +88,40 @@
         {"test": "F4: Tool // format", "status": "PASS", "actual": "556/556 tools"},
         {"test": "F5: Discovery endpoint", "status": "PASS", "actual": "responded"}
       ]
+    },
+    "test5_flowagent_servicenow": {
+      "pattern": "create agent with ServiceNow tool -> call -> verify change request created",
+      "status": "PASS",
+      "platform": "http://localhost:4000",
+      "assertions": [
+        {"test": "F-SN: Agent created", "status": "PASS"},
+        {"test": "F-SN: Mission succeeded", "status": "PASS"},
+        {"test": "F-SN: Made 1 tool call", "status": "PASS"},
+        {"test": "F-SN: Used createNormalChangeRequest", "status": "PASS", "actual": "Created CHG0037767"}
+      ]
+    },
+    "test6_flowagent_backup": {
+      "pattern": "create agent with getConfig tool -> call -> verify config retrieval attempted",
+      "status": "PASS",
+      "platform": "http://localhost:4000",
+      "assertions": [
+        {"test": "F-BK: Backup agent created", "status": "PASS"},
+        {"test": "F-BK: Mission succeeded", "status": "PASS"},
+        {"test": "F-BK: Made 1 tool call", "status": "PASS"},
+        {"test": "F-BK: Used getConfig", "status": "PASS", "notes": "Device unreachable but agent correctly used tool and reported error"}
+      ]
+    },
+    "test7_flowagent_multitool": {
+      "pattern": "create agent with ServiceNow + getConfig -> call -> verify both tools used in one mission",
+      "status": "PASS",
+      "platform": "http://localhost:4000",
+      "assertions": [
+        {"test": "F-MT: Multi-tool agent created", "status": "PASS"},
+        {"test": "F-MT: Mission succeeded", "status": "PASS"},
+        {"test": "F-MT: Made 2+ tool calls", "status": "PASS", "actual": "2 calls"},
+        {"test": "F-MT: Used 2 different tools", "status": "PASS", "actual": "createNormalChangeRequest + getConfig"}
+      ],
+      "notes": "Agent created CHG0037768 and attempted device config in single mission"
     }
   },
   "gotchas_validated_on_live_platform": {
