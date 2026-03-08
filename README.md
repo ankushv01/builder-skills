@@ -89,9 +89,11 @@ Your spec (`{use-case}/spec.md`) is your source of truth. Change it later to add
 
 **Explore / build freestyle** — lighter bootstrap, use skills directly:
 ```
-> List all devices and their OS types
-> Create a command template for show vlan brief
-> Build a workflow that backs up all Cisco devices
+> Build a workflow with merge, childJob, and query tasks
+> Create a pre-check command template for interface validation
+> Create an AI agent that monitors device health and creates ServiceNow tickets
+> Back up configs for all Cisco devices and diff against last known good
+> Build a compliance plan for golden config
 ```
 
 See `docs/developer-flow.md` for the full process diagram.
