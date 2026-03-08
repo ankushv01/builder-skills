@@ -5,7 +5,7 @@
   │  spec-dns-record-management.md    spec-compliance-audit.md   ...        │
   │                                                                         │
   │  21 technology-agnostic HLD specs.                                      │
-  │  Define WHAT to automate, not HOW.                                      │
+  │  Define WHAT to orchestrate, not HOW.                                      │
   └────────────────────────────────┬────────────────────────────────────────┘
                                    │
                                    │  Engineer runs /itential-setup
