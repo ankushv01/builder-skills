@@ -158,36 +158,63 @@ Copy to your use-case directory: `cp environments/local-dev.env my-use-case/.env
 
 ## Helpers
 
-JSON/YAML templates in `helpers/` — always start from these when creating assets:
+JSON/YAML templates in `helpers/` — always start from these when creating assets.
+
+**Scaffolds** — start here when creating new assets:
 
 | File | Purpose |
 |------|---------|
 | `bootstrap.sh` | Bootstrap a use-case working directory with task catalog, adapters, apps |
 | `create-workflow.json` | Workflow scaffold with start/end tasks |
-| `workflow-task-adapter.json` | Adapter task template for workflows |
-| `workflow-task-application.json` | Application task template for workflows |
-| `workflow-task-childjob.json` | childJob task template (actor: "job", correct variable syntax) |
-| `create-command-template.json` | Command template with validation rules |
-| `update-command-template.json` | Update command template (full replacement) |
 | `create-template-jinja2.json` | Jinja2 template for config generation |
 | `create-template-textfsm.json` | TextFSM template for output parsing |
+| `create-command-template.json` | Command template (MOP) with validation rules |
+| `update-command-template.json` | Update command template (full replacement) |
 | `create-project.json` | Project creation |
-| `add-components-to-project.json` | Add assets to project (with move warning) |
+
+**Workflow task templates** — embed these inside workflows:
+
+| File | Purpose |
+|------|---------|
+| `workflow-task-adapter.json` | Adapter task (add `adapter_id`, error transition) |
+| `workflow-task-application.json` | Application task (WorkFlowEngine, TemplateBuilder, etc.) |
+| `workflow-task-childjob.json` | childJob task (`actor: "job"`, `{"task","value"}` syntax) |
+
+**Reference workflows** — tested patterns to study and copy:
+
+| File | Purpose |
+|------|---------|
+| `reference-adapter-workflow.json` | merge → adapter create → query → adapter update, with error handling |
+| `reference-childjob-loop.json` | Parent + child workflows for childJob loop pattern |
+| `reference-parent-workflow.json` | Parent orchestrator: childJob → query → evaluation branching |
+| `reference-child-workflow.json` | Child workflow with try-catch (always sets taskStatus) |
+| `reference-merge-makedata.json` | merge → makeData pattern for string/JSON construction |
+
+**Projects** — packaging and delivery:
+
+| File | Purpose |
+|------|---------|
+| `add-components-to-project.json` | Add assets to project (move/copy warning) |
 | `import-project.json` | Import a project |
-| `update-project-members.json` | Update project membership |
+| `update-project-members.json` | Update project membership (full replacement) |
+
+**Golden config & compliance:**
+
+| File | Purpose |
+|------|---------|
 | `create-golden-config-tree.json` | Golden config tree |
 | `create-golden-config-node.json` | Child node |
 | `update-node-config.json` | Node template with full syntax reference |
-| `add-devices-to-node.json` | Assign devices to a node |
+| `add-devices-to-node.json` | Assign devices to a golden config node |
 | `create-compliance-plan.json` | Compliance plan |
 | `run-compliance-plan.json` | Run compliance plan |
 | `run-compliance.json` | Run compliance directly |
+
+**Other:**
+
+| File | Purpose |
+|------|---------|
 | `lcm-action-workflow.json` | LCM action workflow (must output `instance` variable) |
-| `reference-adapter-workflow.json` | Complete adapter workflow with merge, query, error handling |
-| `reference-childjob-loop.json` | Parent + child workflows for childJob loop pattern |
-| `reference-parent-workflow.json` | Parent orchestrator with childJob → query → evaluation |
-| `reference-child-workflow.json` | Child workflow with try-catch (always sets taskStatus) |
-| `reference-merge-makedata.json` | merge → makeData pattern for string/JSON construction |
 | `helpers/iag/` | IAG service examples (Python, Ansible, OpenTofu, multi-service) |
 
 ## Evals
