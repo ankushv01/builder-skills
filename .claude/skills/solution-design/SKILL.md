@@ -97,7 +97,7 @@ Read local files — do not call the API:
 
 Ask: *"Do you have existing documentation I should follow? Naming conventions, change policies, runbooks, config standards?"*
 
-Capture in `{use-case}/customer-context.md` if provided. If not, move on.
+Write to `{use-case}/customer-context.md` using the Write tool if provided. If not, move on.
 
 ### 1D. Ask Only What Data Can't Answer
 
@@ -168,7 +168,7 @@ Search `workflows.json` for existing workflows that match spec phases. Flag as *
 
 ### Step 4: Produce the Solution Design
 
-Generate `{use-case}/solution-design.md` with:
+**Write the file to disk** at `{use-case}/solution-design.md` using the Write tool. Contents:
 
 **A. Environment Summary** — one paragraph
 
