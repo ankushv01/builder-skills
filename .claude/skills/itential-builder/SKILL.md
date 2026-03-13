@@ -938,7 +938,43 @@ Build an object from multiple resolved values. Primary workaround for `$var` not
 }
 ```
 
-**Gotchas:** Requires at least 2 items (1 item = silently null). Outgoing MUST declare `"merged_object": null` (empty `{}` makes it unreachable).
+**Gotchas:** Requires at least 2 items (1 item = silently null). Outgoing MUST declare `"merged_object": null` (empty `{}` makes it unreachable). **Duplicate keys produce arrays** — merging `{"ip": "1.2.3.4"}` and `{"ip": "1.2.3.4"}` yields `{"ip": ["1.2.3.4", "1.2.3.4"]}`, not an overwrite. To avoid this, pass a pre-built object as a single workflow input variable instead of merging multiple objects with the same keys.
+
+### parse
+
+Convert a JSON string into a JavaScript object. Essential after extracting `result.stdout` from `runService` (which is always a string, even when the script printed valid JSON).
+
+**Incoming:** `stringToParse` (string — the JSON string to parse)
+**Outgoing:** `result` (object — the parsed object)
+
+```json
+{
+  "name": "parse",
+  "canvasName": "parse",
+  "summary": "Parse JSON String",
+  "location": "Application",
+  "locationType": null,
+  "app": "WorkFlowEngine",
+  "type": "operation",
+  "displayName": "WorkFlowEngine",
+  "variables": {
+    "incoming": {
+      "stringToParse": "$var.a1b2.return_data"
+    },
+    "outgoing": {
+      "result": "$var.job.parsedOutput"
+    }
+  },
+  "actor": "Pronghorn"
+}
+```
+
+**Common pattern — runService → query → parse:**
+```
+runService → query(result.stdout) → parse(stringToParse) → use parsed fields
+```
+
+After `parse`, fields are accessible: `$var.parseTask.result.hostname`, `$var.parseTask.result.status`, etc.
 
 ### evaluation
 
@@ -1137,6 +1173,7 @@ jq '.[] | select(.app == "WorkFlowEngine") | {name, summary}' {use-case}/tasks.j
 | Array | `arrayConcat`, `arrayPush`, `sort`, `join`, `arraySlice`, `map`, `reverse` |
 | Object | `assign`, `keys`, `values`, `objectHasOwnProperty`, `setObjectKey` |
 | Time | `getTime`, `addDuration`, `convertTimezone`, `calculateTimeDiff` |
+| Parse/Transform | `parse`, `transformation`, `stringify` |
 | Tools | `restCall`, `csvStringToJson`, `excelToJson`, `asciiToBase64` |
 
 Fetch full schemas with `POST /automation-studio/multipleTaskDetails?dereferenceSchemas=true`.
@@ -1188,6 +1225,8 @@ POST /template_builder/templates/{name}/renderJinja
 - Use underscores in template names (e.g., `IOS_Switchport_Config`)
 - `data` field is a JSON string, not an object
 - Variable syntax is `{{ var }}` (Jinja2), NOT `$var` or `<!var!>`
+- **No `from_json` filter** — Ansible's `from_json` Jinja2 filter does NOT exist in Itential's TemplateBuilder. If you need to parse a JSON string, use a `parse` task before the template render step, not a filter inside the template
+- **`renderJinjaTemplate` as a workflow task** — use `TemplateBuilder.renderJinjaTemplate` with incoming `templateName` (string) and `variables` (object). Output is at `result.renderedTemplate` (string). Different from the standalone API endpoint which uses `context` instead of `variables`
 
 ---
 

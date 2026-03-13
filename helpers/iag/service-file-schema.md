@@ -143,19 +143,24 @@ services:
     type: "opentofu-plan"            # required
     description: "Deploys infra"
     repository: "my-repo"            # required
-    working-directory: "terraform/"  # required
+    working-directory: "terraform/"  # required — directory containing .tf files
     decorator: "my-decorator"        # optional
+    action: "apply"                  # required — "apply", "plan", or "destroy"
+    vars: []                         # optional — passed as -var flags, e.g. ["region=us-east-1"]
+    var-files: []                    # optional — passed as -var-file flags, e.g. ["prod.tfvars"]
+    state-file: null                 # optional — custom state file path
     tags: ["infrastructure"]
-    plan-vars:                       # optional — passed as -var flags
-      - "instance_type=t2.micro"
-      - "region=us-east-1"
-    plan-var-files:                  # optional — passed as -var-file flags
-      - "prod.tfvars"
     secrets:
       - name: "aws-key"
         type: "env"
-        target: "TF_VAR_aws_access_key"
+        target: "TF_VAR_aws_access_key"  # OpenTofu reads TF_VAR_* as variables
 ```
+
+**Rules:**
+- `action` is required — must be `apply`, `plan`, or `destroy`
+- `vars` and `var-files` are arrays (NOT `plan-vars` / `plan-var-files`)
+- Decorator params pass directly as OpenTofu variables
+- Backend/provider config lives in `.tf` files, not the service YAML
 
 ### Executable (Custom)
 

@@ -192,6 +192,31 @@ POST /automation-studio/multipleTaskDetails?dereferenceSchemas=true
 ```
 Use the exact variable names from `incoming` and `outgoing` when wiring task variables in your workflow. Each variable includes a `schema` with type, examples, and validation rules, plus an optional `taskUISchema` describing the UI control (e.g., dropdown with server-side data source).
 
+### nodeLocation Spacing Convention
+
+Follow consistent spacing for readability on the Automation Studio canvas:
+
+| Rule | Value |
+|------|-------|
+| workflow_start → first task (x-delta) | +264px |
+| Sequential task columns (x-delta) | +360px |
+| Stacked tasks in same column (y-delta) | +132px |
+| Last task → workflow_end (x-delta) | +276px |
+
+**Layout strategy:** Group related tasks vertically at the same x-coordinate:
+- A phase's main task + its error handler share the same x, offset by +132px in y
+- childJob + output extraction query in the same column
+- merge + the adapter call it feeds in the same column
+
+Example for a 3-phase workflow:
+```
+workflow_start (x=0, y=0)
+  Phase 1: x=264   — task1 (y=0), task1_err (y=132)
+  Phase 2: x=624   — task2 (y=0), task2_err (y=132)
+  Phase 3: x=984   — task3 (y=0), task3_err (y=132)
+workflow_end (x=1260, y=0)
+```
+
 ## API Reference
 
 **Base Path:** `/automation-studio`

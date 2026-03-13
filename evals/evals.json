@@ -93,6 +93,34 @@
         },
         {
           "id": 9,
+          "prompt": "My IAG Python service returns JSON but when I try to reference fields from result.stdout in a downstream task, they come back null.",
+          "expected_output": "stdout is a string even when it contains JSON. Must use a parse task to convert the JSON string to an object before accessing fields.",
+          "assertions": [
+            {"text": "Identifies that result.stdout is a string, not a parsed object", "type": "critical"},
+            {"text": "Recommends using a parse task (WorkFlowEngine) to convert the JSON string", "type": "critical"},
+            {"text": "Shows the pattern: runService → query(result.stdout) → parse(stringToParse) → access fields", "type": "structural"}
+          ]
+        },
+        {
+          "id": 10,
+          "prompt": "I'm trying to use {{ data | from_json }} in my Jinja2 template on Itential but it throws an error.",
+          "expected_output": "from_json filter does not exist in Itential's Jinja2 implementation. Use a parse task before the template render step.",
+          "assertions": [
+            {"text": "Identifies that from_json filter is not available in Itential Jinja2", "type": "critical"},
+            {"text": "Recommends using a parse task before the template render step", "type": "structural"}
+          ]
+        },
+        {
+          "id": 11,
+          "prompt": "I'm merging two objects that both have a 'device_ip' key and the result has an array instead of a string. Why?",
+          "expected_output": "merge with duplicate keys produces arrays, not overwrites. Pass a pre-built params object instead.",
+          "assertions": [
+            {"text": "Explains merge duplicate keys produce arrays", "type": "critical"},
+            {"text": "Recommends avoiding duplicate keys by using a single pre-built object", "type": "structural"}
+          ]
+        },
+        {
+          "id": 12,
           "prompt": "What's the weather like today?",
           "expected_output": "Should NOT trigger itential-builder skill",
           "assertions": [
@@ -100,7 +128,7 @@
           ]
         },
         {
-          "id": 10,
+          "id": 13,
           "prompt": "Help me write a Python script that calls the ServiceNow API.",
           "expected_output": "Should NOT trigger itential-builder skill — this is generic coding, not Itential workflow building",
           "assertions": [
