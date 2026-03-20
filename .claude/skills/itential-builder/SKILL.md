@@ -57,6 +57,7 @@ This skill covers everything needed to build and test Itential automation assets
 6. Add assets to project    → move/copy into the project
 7. Test                     → jobs/start, check results
 8. Debug                    → check job.error, filesystem-first
+9. Reconcile                → diff built vs designed, update artifacts
 ```
 
 ---

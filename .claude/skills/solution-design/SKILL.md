@@ -423,9 +423,16 @@ That's it. No auth done. No data pulled. No analysis.
     Phase 3: Produce solution-design.md
     ── GATE 2: Present design → engineer approves → plan locked ──
     Phase 4: Build everything from locked plan
+    Phase 5: Reconcile — diff built vs designed, update artifacts
 ```
 
+After build, reconcile captures deviations:
+- Append `## As-Built` to `solution-design.md` — list deviations with reasons, record actual asset names/IDs
+- Append `## Amendments` to `customer-spec.md` — only if scope changed during build, tag with date and reason
+- Original locked sections stay intact — amendments are additive
+
 To modify later: update `{use-case}/customer-spec.md` → re-run from Gate 1.
+On rebuild: start from reconciled artifacts — the amended spec and as-built design are the new baseline.
 
 ---
 

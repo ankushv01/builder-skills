@@ -134,6 +134,7 @@ Tell the engineer what happens next:
 > 4. **Design** — I'll produce a solution design with what to build, reuse, and skip.
 > 5. **Approve the design** (Gate 2) — You review and lock the plan.
 > 6. **Build** — I'll execute the plan, test each piece, and deliver a project.
+> 7. **Reconcile** — I'll capture what was built vs designed, update the spec and design with actuals.
 >
 > You own both gates. Nothing gets built without your sign-off."
 
