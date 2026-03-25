@@ -1,0 +1,38 @@
+{
+  "name": "childJob",
+  "canvasName": "childJob",
+  "summary": "Run Child Automation",
+  "description": "Runs another workflow as a child job",
+  "location": "Application",
+  "locationType": null,
+  "app": "WorkFlowEngine",
+  "type": "operation",
+  "displayName": "WorkFlowEngine",
+  "variables": {
+    "incoming": {
+      "task": "",
+      "workflow": "Child Workflow Name",
+      "variables": {
+        "childInputVar": {
+          "task": "job",
+          "value": "parentJobVar"
+        }
+      },
+      "data_array": "",
+      "transformation": "",
+      "loopType": ""
+    },
+    "outgoing": {
+      "job_details": null
+    },
+    "error": "",
+    "decorators": []
+  },
+  "groups": [],
+  "actor": "job",
+  "scheduled": false,
+  "nodeLocation": {
+    "x": 600,
+    "y": 1308
+  }
+}

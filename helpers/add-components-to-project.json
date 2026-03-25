@@ -1,0 +1,20 @@
+{
+  "components": [
+    {
+      "type": "workflow",
+      "reference": "",
+      "folder": "/"
+    },
+    {
+      "type": "template",
+      "reference": "",
+      "folder": "/"
+    },
+    {
+      "type": "mopCommandTemplate",
+      "reference": "",
+      "folder": "/"
+    }
+  ],
+  "mode": "move"
+}
