@@ -104,7 +104,7 @@ Follow these steps in order. Do not skip any step.
 
 **Step 1: Find tasks.** Search `tasks.json` for the tasks you need:
 ```bash
-jq '.[] | select(.name | test("keyword"; "i")) | {name, app, location, canvasName, displayName}' {use-case}/tasks.json
+jq '.[] | select(.name | test("keyword"; "i")) | {name, app, type, location, canvasName, displayName}' {use-case}/tasks.json
 ```
 
 **Step 2: Resolve adapter app names.** For adapter tasks, the `app` in tasks.json is WRONG. Look up the correct name:
@@ -185,7 +185,7 @@ Becomes this workflow task (use the adapter helper template as starting point):
 - `app`, `locationType` → from apps.json (NOT tasks.json)
 - `displayName` → from tasks.json
 - `location` → `"Adapter"` or `"Application"` (from tasks.json)
-- `type` → `"automatic"` for adapters, `"operation"` for WorkFlowEngine utility tasks
+- `type` → from tasks.json directly — do not guess. It is per-task, not per-app. Read it alongside name, app, location, and canvasName: `jq '.[] | select(.name == "taskName") | {name, app, type, canvasName, location}' tasks.json`
 - `actor` → `"Pronghorn"` for all tasks except childJob (which uses `"job"`)
 - `incoming` → each schema key becomes a variable. Wire with `$var` for top-level values
 - `outgoing` → set to `null` (capture later with `$var.taskId.outVar`)
@@ -277,7 +277,7 @@ workflow_start → e1a1 (merge) → a1b2 (createChangeRequest) → b2c3 (query) 
 | `locationType` | Same as `app` for adapters, `null` for applications | `Servicenow`, `EmailOpensource` |
 | `displayName` | tasks.json `.displayName` | `ServiceNow`, `email` |
 | `location` | tasks.json `.location` | `Adapter` or `Application` |
-| `type` | `"automatic"` for adapters, `"operation"` for utility tasks | `automatic` |
+| `type` | tasks.json `.type` — read directly, do not guess (per-task, not per-app) | varies |
 | `actor` | `"Pronghorn"` always, except childJob which uses `"job"` | `Pronghorn` |
 | `adapter_id` | adapters.json `.results[].id` (adapter **instance** name) | `servicenow-prod`, `email` — this goes in `incoming`, NOT in the task-level `app` field |
 | incoming vars | From task schema (multipleTaskDetails) | `body`, `changeId` |
@@ -854,7 +854,7 @@ PUT /automation-studio/automations/{id}
 | `location` | `"Application"` | `"Adapter"` |
 | `locationType` | `null` | Same as `app` |
 | `app` | App name (e.g., `WorkFlowEngine`) | From `apps.json` (NOT tasks.json) |
-| `type` | `"operation"` for utility tasks | `"automatic"` for adapter calls |
+| `type` | `"automatic"` or `"operation"` — read from tasks.json `.type`, do not guess |
 | `actor` | `"Pronghorn"` | `"Pronghorn"` |
 | `displayName` | App name | May differ from `app` |
 
