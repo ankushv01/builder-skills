@@ -20,3 +20,24 @@ node_modules/
 **/cmd-*.json
 **/tmpl-*.json
 **/project-*.json
+
+# Environment files with credentials — never commit these
+**/.env
+*.env
+!environments/*.env
+
+# Use-case working directories — generated during delivery, not part of the repo
+dns-record-mgmt/
+vlan-provisioning/
+change-management/
+iag-test/
+iag-workspace/
+iag_services/
+setup-temp/
+*-provisioning/
+*-mgmt/
+*-management/
+*-workspace/
+
+# Auth tokens
+**/.auth.json

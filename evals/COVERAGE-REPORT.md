@@ -1,243 +1,141 @@
 # Skill Evaluation Coverage Report
 
-**Date:** 2026-03-08
-**Branch:** skillsv2
-**Compared against:** master branch gotchas and lessons learned
+**Date:** 2026-03-25
+**Skills:** spec-agent, solution-arch-agent, builder-agent, itential-mop, flowagent, iag
 
 ---
 
-## Executive Summary
+## Summary
 
-All gotchas from the master branch are covered across the skillsv2 skill files. No gaps found. The eval suite (`evals/evals.json`) contains 32 test cases across 5 skills, with 76 assertions testing critical gotchas and structural correctness.
-
----
-
-## Gotcha Coverage Matrix
-
-### Legend
-- **Covered** = Documented in skill with correct guidance
-- **Skill** = Which skill file covers it
-- **Eval** = Which eval tests it (skill:id)
-
-### $var Resolution (6 gotchas)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 1 | Task IDs must be hex-only `[0-9a-f]{1,4}` | Yes | workflow-engine, builder, CLAUDE.md | workflow-engine:2 |
-| 2 | $var only resolves at top level of incoming | Yes | workflow-engine, builder, CLAUDE.md | workflow-engine:3, builder:1 |
-| 3 | $var inside nested objects stores literal string | Yes | workflow-engine, builder | builder:1, builder:4 |
-| 4 | Use merge/makeData/query to build nested objects | Yes | workflow-engine, builder | builder:1, builder:4 |
-| 5 | $var inside newVariable value stores literal | Yes | workflow-engine, builder | builder:7 |
-| 6 | Non-hex task IDs silently fail (classified as static) | Yes | workflow-engine | workflow-engine:2 |
-
-### childJob (7 gotchas)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 7 | actor MUST be "job" | Yes | builder, workflow-engine | builder:2 |
-| 8 | task MUST be "" (empty string) | Yes | builder, workflow-engine | builder:2 |
-| 9 | job_details MUST be null | Yes | builder, workflow-engine | builder:2 |
-| 10 | All incoming fields required (even unused) | Yes | builder, workflow-engine | builder:2 |
-| 11 | Variables use {"task","value"} NOT $var | Yes | builder, workflow-engine, CLAUDE.md | builder:3 |
-| 12 | $var inside childJob variables = indefinite hang | Yes | workflow-engine | builder:2 |
-| 13 | Query childJob output uses flat var names not nested paths | Yes | builder, workflow-engine | builder:3 |
-
-### merge (3 gotchas)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 14 | Uses "variable" NOT "value" (different from childJob) | Yes | builder, workflow-engine, CLAUDE.md | builder:1 |
-| 15 | Requires at least 2 items (1 item = silently null) | Yes | builder, workflow-engine | workflow-engine:4 |
-| 16 | Outgoing must declare merged_object: null | Yes | builder | builder:1 |
-
-### evaluation (1 gotcha)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 17 | MUST have BOTH success AND failure transitions | Yes | builder, workflow-engine, CLAUDE.md | builder:6 |
-
-### Transitions & Error Handling (3 gotchas)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 18 | Every adapter/external task needs error transition | Yes | builder, solution-design, CLAUDE.md | builder:1, workflow-engine:1 |
-| 19 | Missing error transition = "No available transitions" + stuck job | Yes | workflow-engine, builder | workflow-engine:1 |
-| 20 | JSON duplicate key problem (success+error to same target) | Yes | builder, CLAUDE.md | builder:5 |
-
-### forEach (2 gotchas)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 21 | Last body task has empty {} transition | Yes | workflow-engine, builder | workflow-engine:5 |
-| 22 | current_item overwritten each iteration (use push to accumulate) | Yes | workflow-engine | — |
-
-### push/pop/shift (1 gotcha)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 23 | Takes variable NAME as plain string, not $var reference | Yes | builder, workflow-engine | builder:8 |
-
-### makeData (2 gotchas)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 24 | variables field must be a resolved object | Yes | builder, workflow-engine | builder:4 |
-| 25 | Use merge first to build variables, then $var reference | Yes | builder, workflow-engine | builder:4 |
-
-### Adapter Tasks (4 gotchas)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 26 | app field from apps.json NOT tasks.json | Yes | builder, setup, solution-design, CLAUDE.md | builder:1, solution-design:1 |
-| 27 | adapter_id required in incoming (not in schema) | Yes | builder | builder:1 |
-| 28 | genericAdapterRequest prepends base_path | Yes | CLAUDE.md | — |
-| 29 | Adapter responses are transformed (don't assume native API shape) | Yes | CLAUDE.md, builder | — |
-
-### Auth & Setup (4 gotchas)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 30 | OAuth MUST use x-www-form-urlencoded | Yes | setup | setup:1 |
-| 31 | Tokens expire mid-session | Yes | setup | setup:4 |
-| 32 | tasks/list app field has WRONG casing for adapters | Yes | setup, CLAUDE.md | setup:1 |
-| 33 | OpenAPI spec ~1.5MB — search locally with jq | Yes | setup, CLAUDE.md | — |
-
-### Projects (4 gotchas)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 34 | Create project first, then build inside it | Yes | CLAUDE.md, solution-design | solution-design:4 |
-| 35 | Move re-prefixes names but doesn't update childJob refs | Yes | solution-design, CLAUDE.md | solution-design:4 |
-| 36 | Component type is mopCommandTemplate not mop | Yes | CLAUDE.md, builder | — |
-| 37 | Members PATCH is full replacement | Yes | builder, CLAUDE.md | — |
-
-### MOP (15 gotchas)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 38 | Missing variable = skip = PASS (not fail) | Yes | mop | mop:3 |
-| 39 | case: true = case-INsensitive | Yes | mop | — |
-| 40 | Eval types are case-sensitive (RegEx not regex) | Yes | mop | mop:2 |
-| 41 | Empty rules = auto-pass | Yes | mop | — |
-| 42 | RegEx 5-second timeout | Yes | mop | — |
-| 43 | contains does substring matching | Yes | mop | — |
-| 44 | Only "name" is required | Yes | mop | — |
-| 45 | Update is full replacement | Yes | mop | mop:5 |
-| 46 | MOP is read-only (never push config) | Yes | mop, CLAUDE.md | mop:4 |
-| 47 | _id equals name | Yes | mop | — |
-| 48 | Rule-level missing var != command-level skip | Yes | mop | — |
-| 49 | Template name change on update = delete + create | Yes | mop | — |
-| 50 | Import renames on collision | Yes | mop | — |
-| 51 | Cannot set namespace directly | Yes | mop | — |
-| 52 | Analytic pre/post must have exactly 1 match each | Yes | mop | — |
-
-### Workflow Structure (4 gotchas)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 53 | canvasName from tasks.json (may differ from name) | Yes | builder | — |
-| 54 | Validation errors = draft workflow | Yes | CLAUDE.md | — |
-| 55 | API response shapes vary by endpoint | Yes | CLAUDE.md, builder | — |
-| 56 | Endpoint base paths differ (workflow_builder vs automation-studio) | Yes | CLAUDE.md | — |
-
-### Templates (2 gotchas)
-
-| # | Gotcha | Covered | Skill(s) | Eval |
-|---|--------|---------|----------|------|
-| 57 | Template group cannot be empty or whitespace-only | Yes | builder | — |
-| 58 | TextFSM may have control chars that break jq | Yes | CLAUDE.md | — |
+| Skill | Evals | Assertions | Critical | Structural | Negative |
+|-------|-------|------------|----------|------------|----------|
+| spec-agent | 5 | 18 | 6 | 11 | 1 |
+| solution-arch-agent | 6 | 23 | 8 | 13 | 2 |
+| builder-agent | 19 | 55 | 22 | 30 | 3 |
+| itential-mop | 6 | 15 | 5 | 9 | 1 |
+| flowagent | 6 | 18 | 4 | 13 | 1 |
+| iag | 10 | 38 | 16 | 21 | 2 |
+| **Total** | **52** | **167** | **61** | **97** | **10** |
 
 ---
 
-## Eval Suite Summary
+## Lifecycle Coverage
 
-| Skill | Total Evals | Positive (should trigger) | Negative (should not trigger) | Total Assertions |
-|-------|-------------|--------------------------|-------------------------------|-----------------|
-| itential-builder | 16 | 13 | 3 | 45 |
-| itential-setup | 5 | 4 | 1 | 14 |
-| itential-mop | 6 | 5 | 1 | 12 |
-| solution-design | 5 | 4 | 1 | 10 |
-| flowagent | 6 | 5 | 1 | 16 |
-| **Total** | **38** | **31** | **7** | **97** |
+### Requirements Stage (spec-agent)
 
-Note: itential-workflow-engine was consolidated into itential-builder. Its 6 evals are now part of itential-builder.
+| # | Behavior | Eval |
+|---|----------|------|
+| 1 | Forks spec to customer-spec.md without overwriting existing | spec-agent:1 |
+| 2 | Does NOT authenticate before spec is selected | spec-agent:1 |
+| 3 | Sets expectations for full lifecycle (Requirements → As-Built) | spec-agent:1 |
+| 4 | Saves .env for later auth, hands off to /solution-arch-agent | spec-agent:1 |
+| 5 | OAuth uses application/x-www-form-urlencoded (explore path) | spec-agent:2 |
+| 6 | Saves .auth.json for downstream skills | spec-agent:2 |
+| 7 | Password auth uses query param not Bearer header | spec-agent:3 |
+| 8 | Resumes from existing workspace without overwriting | spec-agent:4 |
 
-### E2E Integration Tests
+### Feasibility Stage (solution-arch-agent)
 
-| Test | Platform | Assertions | Result |
-|------|----------|------------|--------|
-| Test 1: Utility chain (merge → makeData → query → evaluation) | Cloud | 5 | 5/5 PASS |
-| Test 2: childJob loop (parent → 3 children in parallel) | Cloud | 3 | 3/3 PASS |
-| Test 3: ServiceNow adapter (merge → create → error handler) | Cloud | 3 | 3/3 PASS |
-| Test 4: FlowAgent (create agent → call → check mission) | Local | 8 | 8/8 PASS |
-| **Total** | | **19** | **19/19 PASS** |
+| # | Behavior | Eval |
+|---|----------|------|
+| 9 | Authenticates AFTER spec approval — not before | solution-arch-agent:1 |
+| 10 | Pulls platform data in two stages (core, then spec-contingent) | solution-arch-agent:1 |
+| 11 | Produces feasibility.md with decision (feasible/constrained/blocked/not feasible) | solution-arch-agent:1 |
+| 12 | Presents feasibility.md for approval before proceeding to design | solution-arch-agent:1 |
+| 13 | Marks missing required integration as blocked (not skipped) | solution-arch-agent:3 |
+| 14 | Does NOT invent adapters that don't exist | solution-arch-agent:3 |
+| 15 | Surfaces blocked capabilities to engineer for a decision | solution-arch-agent:3 |
 
-### Assertion Types
+### Design Stage (solution-arch-agent)
 
-| Type | Count | Description |
-|------|-------|-------------|
-| critical | 27 | Must pass — failure means the skill teaches wrong behavior |
-| structural | 62 | Should pass — correct patterns and structure |
-| negative | 8 | Skill should NOT trigger for unrelated prompts |
+| # | Behavior | Eval |
+|---|----------|------|
+| 16 | Produces solution-design.md with component inventory, plan, acceptance criteria | solution-arch-agent:2 |
+| 17 | Presents solution-design.md for approval before any building | solution-arch-agent:2 |
+| 18 | Supports design-only mode (skips feasibility re-run) | solution-arch-agent:4 |
+| 19 | Requires approved customer-spec.md before starting feasibility | solution-arch-agent:5 |
+| 20 | Adapter names resolved from apps.json not tasks.json | solution-arch-agent:1 |
 
----
+### Build Stage (builder-agent)
 
-## Gotchas NOT Directly Eval'd (Covered in Skills, No Dedicated Test Case)
+| # | Behavior | Eval |
+|---|----------|------|
+| 21 | merge uses "variable" not "value" in data_to_merge | builder-agent:1 |
+| 22 | Adapter task body wired via $var to merge output | builder-agent:1 |
+| 23 | Every adapter task has adapter_id and error transition | builder-agent:1 |
+| 24 | childJob actor is "job" | builder-agent:2 |
+| 25 | childJob task is empty string | builder-agent:2 |
+| 26 | childJob job_details is null | builder-agent:2 |
+| 27 | childJob uses {task,value} syntax not $var | builder-agent:3 |
+| 28 | makeData variables built via merge first | builder-agent:4 |
+| 29 | Duplicate transition key workaround (intermediate task) | builder-agent:5 |
+| 30 | evaluation has both success AND failure transitions | builder-agent:6 |
+| 31 | $var inside newVariable value stores literal string | builder-agent:7 |
+| 32 | push/pop/shift use plain string variable name not $var | builder-agent:8 |
+| 33 | IAG stdout is string — parse task needed for JSON | builder-agent:9 |
+| 34 | Jinja2 from_json filter doesn't exist | builder-agent:10 |
+| 35 | merge duplicate keys produce arrays | builder-agent:11 |
+| 36 | Stuck job = missing error transition | builder-agent:12 |
+| 37 | Non-hex task IDs cause silent $var failure | builder-agent:13 |
+| 38 | $var doesn't resolve inside nested objects | builder-agent:14 |
+| 39 | merge requires at least 2 items | builder-agent:15 |
+| 40 | forEach last body task must have empty {} transition | builder-agent:16 |
 
-These 20 gotchas are documented in the skills but don't have a specific eval test case. They are lower-frequency edge cases or documentation-only items:
+### As-Built Stage (builder-agent)
 
-- forEach current_item overwrite (#22)
-- genericAdapterRequest base_path prepend (#28)
-- Adapter response transformation (#29)
-- OpenAPI spec size (#33)
-- Component type naming (#36)
-- Members PATCH full replacement (#37)
-- case: true naming confusion (#39)
-- Empty rules auto-pass (#41)
-- RegEx timeout (#42)
-- Substring matching (#43)
-- Only name required (#44)
-- _id equals name (#47)
-- Rule vs command missing var behavior (#48)
-- Name change = delete+create (#49)
-- Import rename collision (#50)
-- Cannot set namespace (#51)
-- Analytic 1-match rule (#52)
-- canvasName differs from name (#53)
-- Validation errors = draft (#54)
-- TextFSM control chars (#58)
-
-**Recommendation:** These are well-documented in the skill text. Adding eval cases for each would increase the suite to 50+ tests. Worth doing only if eval failures surface in these areas during real usage.
-
----
-
-## How to Run
-
-```bash
-# Using Anthropic's skill-creator eval mode
-/skill-creator eval
-
-# Or target a specific skill
-/skill-creator eval --skill itential-builder
-```
-
-The eval framework will:
-1. Run each prompt with and without the skill loaded
-2. Grade outputs against assertions
-3. Report pass/fail rates per skill and per assertion type
-4. Suggest improvements for failing cases
+| # | Behavior | Eval |
+|---|----------|------|
+| 41 | Produces as-built.md with delivered state, deviations, learnings | builder-agent:17 |
+| 42 | Appends ## As-Built to solution-design.md without rewriting locked plan | builder-agent:17 |
+| 43 | Only amends customer-spec.md if scope changed during build | builder-agent:17 |
 
 ---
 
-## Conclusion
+## Domain Skill Coverage
 
-**Coverage: 58/58 gotchas documented (100%)**
-**Eval coverage: 38/58 gotchas tested (66%)**
-**Critical gotchas tested: 27/27 (100%)**
-**E2E integration tests: 19/19 PASS (100%)**
+### MOP (itential-mop)
 
-All critical gotchas that cause silent failures, stuck jobs, or wrong behavior have dedicated eval assertions. The remaining 20 are documentation-level items covered in the skill text but not individually tested.
+| # | Gotcha | Eval |
+|---|--------|------|
+| 44 | Variable syntax is <!var!> not {{ }} or $var | mop:1 |
+| 45 | RegEx eval is case-sensitive (capital R, E) | mop:2 |
+| 46 | Missing variable = skip = PASS (silent) | mop:3 |
+| 47 | MOP is read-only — never push config | mop:4 |
+| 48 | MOP update is full replacement | mop:5 |
 
-**Skills consolidated:** `itential-workflow-engine` merged into `itential-builder`. `flowagent` added as new skill with 6 eval cases and 8 e2e assertions.
+### FlowAgent
 
-**Auth persistence added:** `.auth.json` pattern ensures authenticate-once, reuse-everywhere across all skills.
+| # | Gotcha | Eval |
+|---|--------|------|
+| 49 | Tool identifiers use // format | flowagent:1 |
+| 50 | Body wrapped in {details: {...}} | flowagent:1 |
+| 51 | Adhoc agents use /flowai/adhoc_agent endpoint | flowagent:4 |
+| 52 | Duplicate tool names cause "must be unique" error | flowagent:5 |
+
+### IAG
+
+| # | Gotcha | Eval |
+|---|--------|------|
+| 53 | Decorator $id must match service name (not "root") | iag:1, iag:4 |
+| 54 | Decorator schema needs additionalProperties: false | iag:1, iag:4 |
+| 55 | Secrets use type: env with target: ENV_VAR_NAME | iag:1 |
+| 56 | Python uses argparse for inputs, os.environ for secrets | iag:1 |
+| 57 | network_cli needs look_for_keys=False in ansible.cfg | iag:2, iag:6 |
+| 58 | runtime.env needs ANSIBLE_STDOUT_CALLBACK: json | iag:2 |
+| 59 | OpenTofu uses "vars" and "var-files" (not plan- prefix) | iag:3, iag:5 |
+| 60 | iagctl run opentofu-plan requires action subcommand | iag:7 |
+| 61 | One-file-multi-service pattern via runtime.env | iag:8 |
+
+---
+
+## E2E Test Coverage
+
+Live platform tests in `evals/e2e/run-e2e-tests.sh`:
+
+| Test | Pattern | Assertions | Status |
+|------|---------|------------|--------|
+| Test 1 | merge → makeData → query → evaluation → branch | 5 | Pass |
+| Test 2 | childJob loop (data_array, parallel, extract loop) | 3 | Pass |
+| Test 3 | merge → adapter create → query → error handling | 3 | Pass |
+
+Last run: 11/11 passed on platform-6-aidev.se.itential.io

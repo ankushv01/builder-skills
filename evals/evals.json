@@ -1,7 +1,138 @@
 {
   "skills": [
     {
-      "skill_name": "itential-builder",
+      "skill_name": "spec-agent",
+      "description": "Tests the Requirements stage: intent detection, environment selection, spec forking, expectations, and handoff to solution-arch-agent",
+      "evals": [
+        {
+          "id": 1,
+          "prompt": "I want to build a port turn-up use case from the spec file.",
+          "expected_output": "Creates working directory, forks spec as customer-spec.md (only if it doesn't exist), sets expectations for the full lifecycle (Requirements → Feasibility → Design → Build → As-Built), hands off to /solution-arch-agent. Does NOT authenticate or pull platform data.",
+          "assertions": [
+            {"text": "Creates use-case directory with mkdir -p", "type": "structural"},
+            {"text": "Forks spec to customer-spec.md — does NOT modify original in spec-files/", "type": "critical"},
+            {"text": "Checks if customer-spec.md already exists before copying (no overwrite)", "type": "critical"},
+            {"text": "Does NOT authenticate or pull platform data before spec is selected", "type": "critical"},
+            {"text": "Tells engineer what happens next: Requirements → Feasibility → Design → Build → As-Built", "type": "structural"},
+            {"text": "Saves .env to use-case directory for later auth", "type": "structural"},
+            {"text": "Hands off to /solution-arch-agent with only the forked spec", "type": "structural"}
+          ]
+        },
+        {
+          "id": 2,
+          "prompt": "Connect me to my Itential platform. I want to explore what's available. Cloud instance with OAuth credentials.",
+          "expected_output": "Explore path: asks which environment, authenticates via OAuth with application/x-www-form-urlencoded, pulls platform data (tasks, apps, adapters, openapi), saves .auth.json, presents summary",
+          "assertions": [
+            {"text": "OAuth POST uses Content-Type: application/x-www-form-urlencoded not JSON", "type": "critical"},
+            {"text": "Checks for existing .env file before asking for credentials", "type": "structural"},
+            {"text": "Saves token to .auth.json for reuse by downstream skills", "type": "critical"},
+            {"text": "Pulls platform data: tasks.json, apps.json, adapters.json, openapi.json", "type": "structural"},
+            {"text": "Presents summary: adapter count, app count, task count", "type": "structural"}
+          ]
+        },
+        {
+          "id": 3,
+          "prompt": "Set up my environment. Platform is at localhost:4000, username admin, password admin.",
+          "expected_output": "Uses password auth via POST /login, token used as query parameter not Bearer header, saves .auth.json",
+          "assertions": [
+            {"text": "Uses POST /login with JSON body for password auth", "type": "structural"},
+            {"text": "Uses token as query parameter (not Bearer header) for local dev", "type": "critical"},
+            {"text": "Saves auth to .auth.json", "type": "structural"}
+          ]
+        },
+        {
+          "id": 4,
+          "prompt": "I already ran this yesterday and have my working directory set up. Can we just continue from where we left off?",
+          "expected_output": "Detects existing directory and artifacts, determines where in the lifecycle to resume based on what files exist, does not re-fork or overwrite existing work",
+          "assertions": [
+            {"text": "Does not overwrite existing customer-spec.md", "type": "critical"},
+            {"text": "Checks which artifacts exist to determine where to resume", "type": "structural"},
+            {"text": "Routes to correct next step based on workspace state", "type": "structural"}
+          ]
+        },
+        {
+          "id": 5,
+          "prompt": "How do I configure my router?",
+          "expected_output": "Should NOT trigger spec-agent — this is a generic networking question, not Itential Platform work",
+          "assertions": [
+            {"text": "Skill is not triggered for generic networking questions", "type": "negative"}
+          ]
+        }
+      ]
+    },
+    {
+      "skill_name": "solution-arch-agent",
+      "description": "Tests Feasibility and Design stages: capability assessment, feasibility.md production, design completeness, handling blocked requirements, design-only mode",
+      "evals": [
+        {
+          "id": 1,
+          "prompt": "I approved my port turn-up spec. The environment has a ServiceNow adapter running, AutomationGateway, and Cisco IOS devices. Assess feasibility.",
+          "expected_output": "Authenticates from .env, pulls platform data in two staged groups (core first, spec-contingent second), resolves each capability and integration against discovered data, produces feasibility.md with assessment and decision (feasible/feasible with constraints/not feasible), presents for engineer approval before proceeding to design",
+          "assertions": [
+            {"text": "Authenticates AFTER spec approval — not before", "type": "critical"},
+            {"text": "Pulls platform data in two stages — core first, spec-contingent second", "type": "structural"},
+            {"text": "Resolves adapter app names from apps.json not tasks.json", "type": "critical"},
+            {"text": "Produces feasibility.md with assessment and decision", "type": "critical"},
+            {"text": "Feasibility decision uses one of: feasible / feasible with constraints / feasible with changes / not feasible", "type": "structural"},
+            {"text": "Presents feasibility.md for engineer approval before starting design", "type": "critical"}
+          ]
+        },
+        {
+          "id": 2,
+          "prompt": "Design the solution. Feasibility is approved — the platform has ServiceNow and AutomationGateway adapters. Devices are Cisco IOS.",
+          "expected_output": "Produces solution-design.md with environment summary, requirements resolution table, design decisions, component inventory (build/reuse/skip), implementation plan with test methods, acceptance criteria mapped to tests. Presents for engineer approval.",
+          "assertions": [
+            {"text": "Produces solution-design.md — does not proceed to build without approval", "type": "critical"},
+            {"text": "Component inventory includes type and action (build/reuse/skip) for each component", "type": "structural"},
+            {"text": "Requirements resolution table shows status and resolution for each spec requirement", "type": "structural"},
+            {"text": "Implementation plan specifies build order and test method for each step", "type": "structural"},
+            {"text": "Acceptance criteria mapped to how each will be verified", "type": "structural"},
+            {"text": "Presents solution-design.md for engineer approval before any building", "type": "critical"}
+          ]
+        },
+        {
+          "id": 3,
+          "prompt": "The spec requires an IPAM system but there's no IPAM adapter installed. IPAM is marked as required.",
+          "expected_output": "Marks IPAM as blocked in feasibility assessment. Surfaces the gap to the engineer. Does not proceed to design until engineer makes a decision on the blocked requirement.",
+          "assertions": [
+            {"text": "Marks missing required integration as blocked (not skipped)", "type": "critical"},
+            {"text": "Does NOT invent an adapter that does not exist", "type": "critical"},
+            {"text": "Surfaces the blocked requirement to the engineer for a decision", "type": "structural"},
+            {"text": "Design does not start while a required capability is blocked", "type": "critical"}
+          ]
+        },
+        {
+          "id": 4,
+          "prompt": "I need to update the implementation plan but the requirements haven't changed. Can we just redo the design?",
+          "expected_output": "Supports design-only mode — skips feasibility re-run, reads existing feasibility.md as context, produces updated solution-design.md",
+          "assertions": [
+            {"text": "Accepts design-only mode without re-running feasibility", "type": "structural"},
+            {"text": "Reads existing feasibility.md as context for the updated design", "type": "structural"},
+            {"text": "Produces an updated solution-design.md", "type": "structural"}
+          ]
+        },
+        {
+          "id": 5,
+          "prompt": "I haven't approved the spec yet. Can you start designing the solution?",
+          "expected_output": "Refuses to proceed to feasibility or design — customer-spec.md must be approved first",
+          "assertions": [
+            {"text": "Does NOT start feasibility without an approved customer-spec.md", "type": "critical"},
+            {"text": "Directs engineer back to /spec-agent to complete Requirements", "type": "structural"}
+          ]
+        },
+        {
+          "id": 6,
+          "prompt": "Help me design a REST API in Express.js.",
+          "expected_output": "Should NOT trigger solution-arch-agent — this is generic API design, not Itential Platform delivery",
+          "assertions": [
+            {"text": "Skill is not triggered for generic software design tasks", "type": "negative"}
+          ]
+        }
+      ]
+    },
+    {
+      "skill_name": "builder-agent",
+      "description": "Tests Build and As-Built stages: workflow construction, critical gotchas, debugging, as-built record production",
       "evals": [
         {
           "id": 1,
@@ -121,80 +252,6 @@
         },
         {
           "id": 12,
-          "prompt": "What's the weather like today?",
-          "expected_output": "Should NOT trigger itential-builder skill",
-          "assertions": [
-            {"text": "Skill is not triggered for unrelated queries", "type": "negative"}
-          ]
-        },
-        {
-          "id": 13,
-          "prompt": "Help me write a Python script that calls the ServiceNow API.",
-          "expected_output": "Should NOT trigger itential-builder skill — this is generic coding, not Itential workflow building",
-          "assertions": [
-            {"text": "Skill is not triggered for generic coding tasks", "type": "negative"}
-          ]
-        }
-      ]
-    },
-    {
-      "skill_name": "itential-setup",
-      "evals": [
-        {
-          "id": 1,
-          "prompt": "Connect me to my Itential platform. I have a cloud instance with OAuth credentials.",
-          "expected_output": "Uses application/x-www-form-urlencoded for OAuth, checks for existing .env files first, saves token for reuse",
-          "assertions": [
-            {"text": "OAuth POST uses Content-Type: application/x-www-form-urlencoded not JSON", "type": "critical"},
-            {"text": "Checks for existing .env file before asking for credentials", "type": "structural"},
-            {"text": "Uses Bearer token in Authorization header for subsequent calls", "type": "structural"}
-          ]
-        },
-        {
-          "id": 2,
-          "prompt": "I want to build the port turn-up use case from the spec file.",
-          "expected_output": "Creates working directory, forks spec as customer-spec.md, sets expectations for the flow, hands off to /solution-design. Does NOT auth or pull data.",
-          "assertions": [
-            {"text": "Creates use-case directory", "type": "structural"},
-            {"text": "Forks spec to customer-spec.md (does not modify original in spec-files/)", "type": "structural"},
-            {"text": "Does NOT authenticate or pull platform data for spec path", "type": "critical"},
-            {"text": "Tells engineer what happens next (understand, Gate 1, discover, design, Gate 2, build)", "type": "structural"},
-            {"text": "Hands off to /solution-design with only the forked spec file", "type": "structural"}
-          ]
-        },
-        {
-          "id": 3,
-          "prompt": "Set up my environment. Platform is at localhost:4000, username admin, password admin.",
-          "expected_output": "Uses password auth via POST /login, saves token, uses token as query parameter",
-          "assertions": [
-            {"text": "Uses POST /login with JSON body for password auth", "type": "structural"},
-            {"text": "Uses token as query parameter for local dev (not Bearer header)", "type": "structural"}
-          ]
-        },
-        {
-          "id": 4,
-          "prompt": "I already ran setup yesterday. The working directory has all the files. Just let me build.",
-          "expected_output": "Detects existing directory and reuses it — does not re-create or re-fork. Points to appropriate skill based on what's in the workspace.",
-          "assertions": [
-            {"text": "Reuses existing working directory without overwriting files", "type": "structural"},
-            {"text": "Checks what artifacts exist (customer-spec.md, solution-design.md) to determine where in the flow to resume", "type": "structural"}
-          ]
-        },
-        {
-          "id": 5,
-          "prompt": "How do I configure my router?",
-          "expected_output": "Should NOT trigger itential-setup — this is a generic networking question",
-          "assertions": [
-            {"text": "Skill is not triggered for generic networking questions", "type": "negative"}
-          ]
-        }
-      ]
-    },
-    {
-      "skill_name": "itential-builder",
-      "evals": [
-        {
-          "id": 1,
           "prompt": "My workflow job is stuck in 'running' state and never completes. The failing task is an adapter call to ServiceNow.",
           "expected_output": "Diagnoses missing error transition on adapter task. Advises adding state:'error' transition.",
           "assertions": [
@@ -204,7 +261,7 @@
           ]
         },
         {
-          "id": 2,
+          "id": 13,
           "prompt": "I set a task ID of 'push1' on my arrayPush task but $var.push1.result always returns the literal string instead of the actual value.",
           "expected_output": "Identifies non-hex task ID as the problem. 'push1' contains non-hex chars. Must use hex-only IDs.",
           "assertions": [
@@ -214,7 +271,7 @@
           ]
         },
         {
-          "id": 3,
+          "id": 14,
           "prompt": "I'm trying to pass $var.job.deviceName inside a nested object in my adapter task's body field but it's not resolving.",
           "expected_output": "Explains $var only resolves at top level of incoming. Use merge to build the object first.",
           "assertions": [
@@ -224,7 +281,7 @@
           ]
         },
         {
-          "id": 4,
+          "id": 15,
           "prompt": "My merge task has only 1 item in data_to_merge and the output is null. What's wrong?",
           "expected_output": "merge requires at least 2 items. 1 item silently produces null.",
           "assertions": [
@@ -233,7 +290,7 @@
           ]
         },
         {
-          "id": 5,
+          "id": 16,
           "prompt": "In my forEach loop, the last task connects back to the forEach task but the job errors out.",
           "expected_output": "Last task in forEach body must have empty transition {}. Do NOT connect back to forEach.",
           "assertions": [
@@ -243,11 +300,31 @@
           ]
         },
         {
-          "id": 6,
-          "prompt": "Help me optimize my SQL queries for PostgreSQL.",
-          "expected_output": "Should NOT trigger workflow-engine skill",
+          "id": 17,
+          "prompt": "The build is complete. Produce the as-built record.",
+          "expected_output": "Produces as-built.md with: delivered state (actual asset names/IDs), deviations from solution-design.md with reasons, learnings from the build. Appends As-Built section to solution-design.md. Amends customer-spec.md only if scope changed during build.",
           "assertions": [
-            {"text": "Skill is not triggered for database optimization", "type": "negative"}
+            {"text": "Produces as-built.md with delivered state, deviations, and learnings", "type": "critical"},
+            {"text": "Records actual asset names and IDs (workflow names, project ID, template names)", "type": "structural"},
+            {"text": "Lists deviations from solution-design.md with one-line reason for each", "type": "structural"},
+            {"text": "Appends ## As-Built section to solution-design.md — does not rewrite locked plan", "type": "critical"},
+            {"text": "Only amends customer-spec.md if scope changed during build", "type": "structural"}
+          ]
+        },
+        {
+          "id": 18,
+          "prompt": "What's the weather like today?",
+          "expected_output": "Should NOT trigger builder-agent skill",
+          "assertions": [
+            {"text": "Skill is not triggered for unrelated queries", "type": "negative"}
+          ]
+        },
+        {
+          "id": 19,
+          "prompt": "Help me write a Python script that calls the ServiceNow API.",
+          "expected_output": "Should NOT trigger builder-agent skill — this is generic coding, not Itential workflow building",
+          "assertions": [
+            {"text": "Skill is not triggered for generic coding tasks", "type": "negative"}
           ]
         }
       ]
@@ -310,60 +387,6 @@
           "expected_output": "Should NOT trigger MOP skill",
           "assertions": [
             {"text": "Skill is not triggered for Terraform tasks", "type": "negative"}
-          ]
-        }
-      ]
-    },
-    {
-      "skill_name": "solution-design",
-      "evals": [
-        {
-          "id": 1,
-          "prompt": "I approved my port turn-up spec. Design the solution. The environment has a ServiceNow adapter running and devices in inventory.",
-          "expected_output": "After Gate 1 (spec approved): authenticates, pulls bootstrap + spec-contingent data, resolves capabilities/integrations, produces solution-design.md with component inventory, presents for Gate 2",
-          "assertions": [
-            {"text": "Authenticates and pulls bootstrap data AFTER spec approval (not before)", "type": "critical"},
-            {"text": "Pulls spec-contingent data based on approved scope (devices, workflows)", "type": "structural"},
-            {"text": "Resolves adapter names from apps.json not tasks.json", "type": "critical"},
-            {"text": "Produces component inventory with type and action (build/reuse/skip)", "type": "structural"},
-            {"text": "Maps acceptance criteria to test methods", "type": "structural"},
-            {"text": "Presents design for approval (Gate 2) before building", "type": "structural"}
-          ]
-        },
-        {
-          "id": 2,
-          "prompt": "Design a solution for config backup. The environment has no ITSM adapter.",
-          "expected_output": "Marks ITSM as skipped (not required) or blocked (if required). Does not invent an adapter that doesn't exist.",
-          "assertions": [
-            {"text": "Does NOT invent adapters that aren't in the environment", "type": "critical"},
-            {"text": "Marks missing optional integration as 'skipped' with fallback", "type": "structural"},
-            {"text": "Marks missing required integration as 'blocked'", "type": "structural"}
-          ]
-        },
-        {
-          "id": 3,
-          "prompt": "Build the solution design. I haven't approved the spec yet.",
-          "expected_output": "Should refuse to proceed — Gate 1 (spec approval) must happen before design.",
-          "assertions": [
-            {"text": "Does NOT skip Gate 1 — requires spec approval first", "type": "critical"},
-            {"text": "Asks engineer to review and approve spec before proceeding", "type": "structural"}
-          ]
-        },
-        {
-          "id": 4,
-          "prompt": "The design includes child workflows. How will they be deployed into a project?",
-          "expected_output": "Create project first, then build inside it OR build globally then move. Warns that move re-prefixes names but doesn't update childJob workflow refs.",
-          "assertions": [
-            {"text": "Warns about project move breaking childJob workflow references", "type": "critical"},
-            {"text": "Recommends creating project first and building inside it", "type": "structural"}
-          ]
-        },
-        {
-          "id": 5,
-          "prompt": "Help me design a REST API in Express.js.",
-          "expected_output": "Should NOT trigger solution-design skill",
-          "assertions": [
-            {"text": "Skill is not triggered for generic API design tasks", "type": "negative"}
           ]
         }
       ]
@@ -454,7 +477,7 @@
         },
         {
           "id": 2,
-          "prompt": "Create an IAG Ansible service that runs health check show commands on a Cisco XR device. I need show version, show platform, and show ip interface brief.",
+          "prompt": "Create an IAG Ansible service that runs health check show commands on a Cisco XR device.",
           "expected_output": "services.yaml with ansible-playbook service, runtime block (inventory, config-file, req-file, env), inventory.yaml with network_cli + Jinja2 refs, ansible.cfg with look_for_keys=False, playbook using iosxr_command or cli_command",
           "assertions": [
             {"text": "Service type is ansible-playbook", "type": "structural"},
@@ -522,7 +545,7 @@
         {
           "id": 8,
           "prompt": "I want to build one Python script that handles multiple IAG services — like list, create, and delete operations for the same API.",
-          "expected_output": "One-file-multi-service pattern: same script with different runtime.env values (e.g., ACTION=list, ACTION=create). Script reads os.environ['ACTION'] to select behavior. Each service in services.yaml shares the same filename but has different runtime.env.",
+          "expected_output": "One-file-multi-service pattern: same script with different runtime.env values (e.g., ACTION=list, ACTION=create). Script reads os.environ['ACTION'] to select behavior.",
           "assertions": [
             {"text": "Describes one-file-multi-service pattern using runtime.env", "type": "critical"},
             {"text": "Each service definition has different runtime.env values", "type": "structural"},

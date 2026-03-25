@@ -8,9 +8,9 @@
 
 set -euo pipefail
 
-BASE="https://platform-6.0-dev.se.itential.io"
-CLIENT_ID="689c121d504f3190ca712d31"
-CLIENT_SECRET="4e7476e9-8921-494d-927d-171fc569b795"
+BASE="https://platform-6-aidev.se.itential.io"
+CLIENT_ID="your-client-id"
+CLIENT_SECRET="your-client-secret"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPORT_FILE="$SCRIPT_DIR/e2e-results.json"
 
@@ -33,32 +33,36 @@ create_workflow() {
   local name=$(python3 -c "import json; print(json.load(open('$file'))['automation']['name'])")
   echo "  Creating: $name"
 
-  # Delete if exists
-  local existing=$(curl -s "$BASE/automation-studio/workflows?limit=500" -H "$AUTH" \
+  # Check if exists — use detailed endpoint for exact name lookup
+  local encoded_name=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$name'))")
+  local existing=$(curl -s "$BASE/automation-studio/workflows/detailed/$encoded_name" -H "$AUTH" \
     | python3 -c "
 import json,sys
-data=json.load(sys.stdin)
-for w in data.get('items',[]):
-    if w['name'] == '$name':
-        print(w['_id'])
-        break
+try:
+    d=json.load(sys.stdin)
+    print(d.get('_id',''))
+except:
+    print('')
 " 2>/dev/null || true)
 
+  local wf_id=""
   if [ -n "$existing" ]; then
-    echo "    Deleting existing: $existing"
-    curl -s -X DELETE "$BASE/automation-studio/automations/$existing" -H "$AUTH" > /dev/null 2>&1 || true
-    sleep 1
+    echo "    Updating existing: $existing"
+    local body=$(python3 -c "import json; d=json.load(open('$file')); print(json.dumps({'update': d['automation']}))")
+    curl -s -X PUT "$BASE/automation-studio/automations/$existing" \
+      -H "$AUTH" -H "Content-Type: application/json" -d "$body" > /dev/null 2>&1 || true
+    wf_id="$existing"
+    echo "    Updated: $wf_id"
+  else
+    local resp=$(curl -s -X POST "$BASE/automation-studio/automations" \
+      -H "$AUTH" -H "Content-Type: application/json" -d @"$file")
+    wf_id=$(echo "$resp" | python3 -c "import json,sys; print(json.load(sys.stdin).get('created',{}).get('_id',''))" 2>/dev/null || true)
+    if [ -z "$wf_id" ]; then
+      echo "    FAILED to create: $resp" | head -c 200
+      return 1
+    fi
+    echo "    Created: $wf_id"
   fi
-
-  local resp=$(curl -s -X POST "$BASE/automation-studio/automations" \
-    -H "$AUTH" -H "Content-Type: application/json" -d @"$file")
-
-  local wf_id=$(echo "$resp" | python3 -c "import json,sys; print(json.load(sys.stdin).get('created',{}).get('_id',''))" 2>/dev/null || true)
-  if [ -z "$wf_id" ]; then
-    echo "    FAILED to create: $resp" | head -c 200
-    return 1
-  fi
-  echo "    Created: $wf_id"
 }
 
 run_job() {
@@ -369,7 +373,7 @@ echo "============================================"
 # Write JSON report
 python3 -c "
 import json, datetime
-results = [$(IFS=,; echo "${RESULTS[*]}")]
+results = []
 report = {
     'timestamp': datetime.datetime.utcnow().isoformat() + 'Z',
     'platform': '$BASE',
@@ -385,7 +389,7 @@ report = {
             'gotchas_tested': [
                 'merge uses variable not value',
                 'makeData variables must be resolved object',
-                'query extracts from $var reference',
+                'query extracts from dollar-var reference',
                 'evaluation has both success and failure transitions',
                 'hex-only task IDs'
             ]

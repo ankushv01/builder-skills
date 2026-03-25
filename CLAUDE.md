@@ -6,49 +6,59 @@ This project contains skills for assisting developers on the Itential Platform. 
 
 Each skill owns a domain. **Invoke the skill using the Skill tool before working in that domain.** Skills contain the correct API methods, request bodies, response shapes, and patterns. Don't guess — load the skill.
 
-| Skill | Owns | When to Use |
-|-------|------|-------------|
-| `/itential-setup` | **Entry point** | Always start here. Route: explore (auth + bootstrap) or spec (fork + hand off). |
-| `/solution-design` | Spec → design | Understand spec, approve (Gate 1), discover environment, design, approve (Gate 2). |
-| `/itential-builder` | **Building everything** | Create projects, workflows, templates (Jinja2/TextFSM), command templates (MOP). Wire tasks, run jobs, debug. |
-| `/itential-devices` | Device operations | List devices, get configs, backup, diff, device groups, apply templates. |
-| `/itential-golden-config` | Compliance | Golden config trees, config specs, compliance plans, grading, remediation. |
-| `/iag` | Automation Gateway | Build IAG services (iagctl), call them from workflows (GatewayManager.runService). |
-| `/itential-inventory` | Inventory management | Device inventories, nodes, actions, tags. Required for IAG5. |
-| `/itential-lcm` | Lifecycle management | Resource models, instances, actions, execution history. Service lifecycle. |
-| `/flowagent` | AI Agents | Create agents, configure LLM providers, discover tools, run missions, track results. |
+| Skill | Agent | When to Use |
+|-------|-------|-------------|
+| `/explore` | — | Explore a platform freely — auth, discover, browse, build freestyle. |
+| `/spec-agent` | **Spec Agent** | Start a delivery from a spec. Owns Requirements stage. |
+| `/project-to-spec` | — | Read an existing project → produce customer-spec.md + solution-design.md. |
+| `/flowagent-to-spec` | — | Read a FlowAgent → produce customer-spec.md as a deterministic workflow spec. |
+| `/solution-arch-agent` | **Solution Architecture Agent** | Feasibility assessment + solution design. Runs after Requirements. |
+| `/builder-agent` | **Builder Agent** | Build all assets, run tests, produce as-built record. |
+| `/itential-devices` | — | Device operations: list, backup, diff, device groups. |
+| `/itential-golden-config` | — | Compliance: golden config trees, plans, grading, remediation. |
+| `/iag` | — | Automation Gateway: IAG services (Python, Ansible, OpenTofu). |
+| `/itential-inventory` | — | Device inventories, nodes, actions, tags. Required for IAG5. |
+| `/itential-lcm` | — | Lifecycle management: resource models, instances, actions. |
+| `/flowagent` | — | AI Agents: configure LLM providers, tools, missions. |
 
-### User Flow
+### Delivery Lifecycle
 
-`/itential-setup` is the entry point. It asks intent, then routes.
+Spec-based delivery follows five stages. Each stage has a named agent, a clear input, and a deliverable.
 
 ```
-/itential-setup          → "What are you here to do?"
-  │
-  ├── "Explore"
-  │     Auth → pull bootstrap → summarize → use skills directly
-  │
-  └── "Build from a spec"
-        Pick spec → fork to customer-spec.md → set expectations
-        │
-        /solution-design → Understand + Gate 1 (spec) → Discover → Design + Gate 2
-        /itential-builder → Execute locked plan, test, deliver
+Requirements  →  Feasibility  →  Design  →  Build  →  As-Built
+      │                │              │          │           │
+  Spec Agent   Solution Architecture  Solution   Builder     Builder
+                     Agent           Architecture Agent       Agent
+                                      Agent
+      │                │              │          │           │
+  customer-        feasibility.md  solution-    assets/    as-built.md
+  spec.md          (assessment     design.md    configs    (delivered state,
+  (approved)       + decision)     (approved)  (delivered)  deviations,
+                                                            learnings)
+                                                           ↳ design updates
+                                                           ↳ spec amendments
 ```
 
-**Spec-based flow — three layers:**
+**Deliverables:**
+
+| Deliverable | Artifact | Produced by | Audience |
+|-------------|----------|-------------|----------|
+| HLD | `customer-spec.md` | Spec Agent | Customer / stakeholder |
+| Feasibility Assessment | `feasibility.md` | Solution Architecture Agent | Customer / architect |
+| Solution Design / LLD | `solution-design.md` | Solution Architecture Agent | Engineer / delivery team |
+| As-Built | `as-built.md` | Builder Agent | Customer / delivery / support / system of record |
+
+**Explore path** (no spec, no delivery lifecycle):
 ```
-INTENT:       /itential-setup → fork spec → /solution-design Phase 1 → Gate 1
-FEASIBILITY:  /solution-design Phase 2-3 → auth, discover, design → Gate 2
-EXECUTION:    /itential-builder → build from locked plan, test, deliver
+/explore → auth → pull platform data → summarize → use skills directly
 ```
 
-**Key principle:** Lock intent before touching the environment. Design against approved intent. Build only from approved design.
-
-**IMPORTANT: Invoke skills using the Skill tool** — don't just reference them in text. When you need to build workflows/templates, invoke `/itential-builder`. When you need to work with devices, invoke `/itential-devices`. The skills contain the API details you need. Without loading them, you're guessing.
+**IMPORTANT: Invoke skills using the Skill tool** — don't just reference them in text. When you need to build workflows/templates, invoke `/builder-agent`. When you need to work with devices, invoke `/itential-devices`. The skills contain the API details you need. Without loading them, you're guessing.
 
 ### Auth Reuse — Authenticate Once, Reuse Everywhere
 
-**Auth happens when first needed** — in setup (explore path) or in solution-design Phase 2 (spec path). The token is saved to `{use-case}/.auth.json`. Every subsequent skill should:
+**Auth happens when first needed** — in `/explore` (explore path) or in `/solution-arch-agent` during Feasibility. The token is saved to `{use-case}/.auth.json`. Every subsequent skill should:
 1. Read `{use-case}/.auth.json` for `platform_url`, `auth_method`, and `token`
 2. Use the token for all API calls (Bearer header for OAuth, query param for local)
 3. On auth error (401/403): re-authenticate using `{use-case}/.env` and update `.auth.json`
@@ -70,7 +80,7 @@ curl -s "{BASE}/help/openapi?url={ENCODED_BASE}" -H "Authorization: Bearer {TOKE
 # Local dev
 curl -s "{BASE}/help/openapi?url={ENCODED_BASE}&token={TOKEN}" > openapi.json
 ```
-For explore mode, setup pulls this automatically. For spec mode, solution-design pulls it after Gate 1. If you're working outside those flows, fetch it yourself.
+For explore mode, `/explore` pulls this automatically. For spec mode, `/solution-arch-agent` pulls it during Feasibility. If you're working outside those flows, fetch it yourself.
 
 **Before making any API call:**
 1. Check the relevant skill for the pattern
@@ -85,7 +95,7 @@ For explore mode, setup pulls this automatically. For spec mode, solution-design
 
 **Before parsing any local JSON file:**
 1. Check the response shape first — `jq type` and `jq keys` on the file
-2. The solution-design skill has a file-to-shape table — use it
+2. The `/solution-arch-agent` skill has a file-to-shape table — use it
 3. Key shapes to remember:
    - `adapters.json` → `{"results": [...]}`
    - `applications.json` → `{"results": [...]}`
@@ -117,38 +127,33 @@ Figure out which **category of work** the user needs:
 
 ## Developer Flow
 
-### Step 1: Start with Intent
-
-Use `/itential-setup` to decide what you're doing:
-- **Explore** — auth, pull bootstrap, browse the platform with skills
-- **Build from spec** — pick a spec, fork it, then `/solution-design` handles everything: understand → approve spec (Gate 1) → discover environment → design → approve design (Gate 2)
-
-### Step 2: Build Incrementally (after design is approved)
-
-1. **Check for existing assets to reuse** — search workflows, templates before building new
-2. **Test each piece individually** — command templates, Jinja2 templates, child workflows
-3. **Create assets and save JSON locally** — in the use-case directory
-4. **Test and iterate** — run via `jobs/start`, check results, edit local JSON, PUT to update
-5. **Then compose** — connect tested pieces into the full workflow with error handling
-
-### Step 4: Test and Debug
+Five stages. Three agents. Each stage has a named agent, a clear input, and a deliverable. Nothing moves forward without the engineer's sign-off at each stage.
 
 ```
-POST /operations-manager/jobs/start
-{"workflow": "Name", "options": {"type": "automation", "variables": {...}}}
+Requirements  →  Feasibility  →  Design  →  Build  →  As-Built
+      │                │              │          │           │
+  /spec-agent    /solution-        /solution-  /builder-  /builder-
+                  arch-agent        arch-agent   agent      agent
+      │                │              │          │           │
+  customer-        feasibility.md  solution-    assets/    as-built.md
+  spec.md          (approved)       design.md   configs    (approved)
+  (approved)                        (approved)
 ```
 
+**Stage summaries:**
+
+| Stage | Agent | What happens | Engineer does |
+|-------|-------|-------------|---------------|
+| Requirements | `/spec-agent` | Refines use case, defines scope, structures HLD | Approves `customer-spec.md` |
+| Feasibility | `/solution-arch-agent` | Connects to platform, assesses capabilities, flags constraints | Approves `feasibility.md` |
+| Design | `/solution-arch-agent` | Produces component inventory, adapter mappings, build plan | Approves `solution-design.md` |
+| Build | `/builder-agent` | Builds all assets, tests each component, delivers | Reviews and accepts delivery |
+| As-Built | `/builder-agent` | Records delivered state, deviations, learnings | Signs off on `as-built.md` |
+
+**For explore / freestyle work:**
 ```
-GET /operations-manager/jobs/{jobId}
+/spec-agent → auth → pull platform data → use skills directly
 ```
-
-When something fails: check `job.status`, check `job.error` array, look at `IAPerror.displayString`.
-
-### Step 5: Package and Deliver
-
-1. Create a project: `POST /automation-studio/projects`
-2. Add all components: `POST /automation-studio/projects/{id}/components/add`
-3. Grant access: `PATCH /automation-studio/projects/{id}` with members
 
 ## Key Rules
 
@@ -170,7 +175,7 @@ When something fails: check `job.status`, check `job.error` array, look at `IAPe
 11. **Use `POST /projects/import` to create projects atomically** — build all assets locally, pre-compute the project `_id`, pre-wire childJob `@projectId:` refs, then import everything in one call. Avoid the create-then-move pattern (breaks childJob refs, causes project-locking issues).
 12. **API response shapes vary** — projects use `{message, data, metadata}`, but workflow and template lists use `{items, skip, limit, total}`, and create endpoints return `{created, edit}`. Always check the response shape before parsing
 13. **Project component types** — valid values: `workflow`, `template`, `transformation`, `jsonForm`, `mopCommandTemplate`, `mopAnalyticTemplate`
-14. **Use skills, don't reimplement** — `/itential-builder` covers projects, workflows, templates, MOP, and testing. Only load other skills for their specific domains (devices, compliance, IAG, etc.)
+14. **Use skills, don't reimplement** — `/builder-agent` covers projects, workflows, templates, MOP, and testing. Only load other skills for their specific domains (devices, compliance, IAG, etc.)
 15. **When unsure about ANY endpoint, method, or payload — check `openapi.json` FIRST.** Run `jq '.paths["/the/endpoint"]' {use-case}/openapi.json` to see the method, request body schema, and response schema. Don't guess, don't try variations, don't make up field names — look it up. The spec is always right.
 16. **If `openapi.json` is not local, fetch it** — `GET /help/openapi?url={ENCODED_BASE}` and save it. Then search locally.
 17. **If the openapi schema is empty for an endpoint** — check the corresponding POST/PUT endpoint's schema for the wrapper pattern. As a last resort, send `{}` and read the `"Missing Params"` error — it lists every required field with name, type, and examples.
