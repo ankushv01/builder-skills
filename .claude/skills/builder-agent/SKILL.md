@@ -23,6 +23,7 @@ argument-hint: "[action or asset-type]"
 | **Agent does** | Builds all components per design, tests each piece, reports delivery outcomes |
 | **Engineer action** | Reviews delivery and resolves open build questions |
 | **Deliverable** | Deployed assets (workflows, templates, projects) |
+| **Customer receives** | Delivered project — all workflows, templates, and configs tested, packaged, and access granted. Acceptance criteria verified. |
 
 Build implements the approved plan. The builder never re-pulls discovery data — it uses what the Solution Architecture Agent left in the workspace. If any required file is missing, stop and surface as an upstream failure.
 
@@ -34,6 +35,7 @@ Build implements the approved plan. The builder never re-pulls discovery data �
 | **Agent does** | Records delivered state, deviations from design, learnings; updates design and spec where needed |
 | **Engineer action** | Signs off on as-built record |
 | **Deliverable** | `as-built.md` + design/spec updates |
+| **Customer receives** | As-built record — delivered state, deviations from design with reasons, and learnings. The baseline for future work on this use case. |
 
 As-Built is closeout documentation. It captures delivery reality — what was built, what changed from the design, and what was learned. Design deviations update `solution-design.md` as an `## As-Built` section. Scope changes amend `customer-spec.md` with a dated `## Amendments` section.
 

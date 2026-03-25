@@ -20,6 +20,7 @@ argument-hint: "[use-case-name]"
 | **Agent does** | Refines requirements, clarifies scope, defines acceptance criteria, structures the HLD |
 | **Engineer action** | Reviews and approves the requirements spec |
 | **Deliverable** | `customer-spec.md` (HLD, approved) |
+| **Customer receives** | Approved statement of what will be built — scope, constraints, acceptance criteria. Nothing is assessed or built until this is signed off. |
 
 Requirements defines what is needed. Nothing is built or assessed until this is approved.
 

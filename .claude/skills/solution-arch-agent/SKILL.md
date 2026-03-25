@@ -23,6 +23,7 @@ argument-hint: "[use-case or design-only]"
 | **Agent does** | Connects to platform, assesses capabilities, checks adapters, finds reuse candidates, identifies constraints |
 | **Engineer action** | Reviews assessment and approves decision to proceed |
 | **Deliverable** | `feasibility.md` (assessment + decision) |
+| **Customer receives** | Feasibility assessment with a clear decision (feasible / feasible with constraints / not feasible), flagged constraints, and identified reuse opportunities. |
 
 Feasibility confirms what is possible. Decision options: **feasible**, **feasible with constraints**, **feasible with changes**, or **not feasible**. Design does not start until feasibility is approved.
 
@@ -34,6 +35,7 @@ Feasibility confirms what is possible. Decision options: **feasible**, **feasibl
 | **Agent does** | Produces implementation design — component inventory, adapter mappings, reuse decisions, build order, test plan |
 | **Engineer action** | Reviews and approves the solution design |
 | **Deliverable** | `solution-design.md` (Solution Design / LLD, approved) |
+| **Customer receives** | Solution Design / LLD — component inventory, adapter mappings, build order, and acceptance criteria mapped to tests. Nothing is built until this is signed off. |
 
 Design defines how it will be delivered. Nothing is built until this is approved.
 
