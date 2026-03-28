@@ -42,35 +42,13 @@ Copy an environment template and point at your platform:
 cp environments/cloud-lab.env my-use-case/.env   # edit with your credentials
 ```
 
----
-
-## Interaction Modes
-
-**Deliver from Spec** — structured end-to-end delivery with artifact-based approvals:
-```
-/itential-builder:spec-agent → /itential-builder:solution-arch-agent → /itential-builder:builder-agent
-```
-
-**FlowAgent to Spec** — convert an agent's proven pattern into a deterministic workflow:
-```
-/itential-builder:flowagent-to-spec → /itential-builder:solution-arch-agent → /itential-builder:builder-agent
-```
-
-**Generate Spec from Project** — extract formal documentation from existing automation:
-```
-/itential-builder:project-to-spec
-```
-
-**Explore** — connect to a platform, browse capabilities, build freely:
-```
-/itential-builder:explore
-```
-
-See [`docs/developer-flow.md`](docs/developer-flow.md) for the full flow diagram and design principles.
+See [`docs/quickstart.md`](docs/quickstart.md) for the full setup and first delivery walkthrough.
 
 ---
 
 ## Skills
+
+**Delivery**
 
 | Skill | What It Does |
 |-------|-------------|
@@ -80,6 +58,11 @@ See [`docs/developer-flow.md`](docs/developer-flow.md) for the full flow diagram
 | `/itential-builder:flowagent-to-spec` | Read a FlowAgent → produce deterministic workflow spec |
 | `/itential-builder:project-to-spec` | Read an existing project → produce spec + design docs |
 | `/itential-builder:explore` | Auth, discover platform, browse freely |
+
+**Platform**
+
+| Skill | What It Does |
+|-------|-------------|
 | `/itential-builder:flowagent` | Create and run AI agents (LLM providers, tools, missions) |
 | `/itential-builder:iag` | IAG services — Python, Ansible, OpenTofu via iagctl |
 | `/itential-builder:itential-mop` | Command templates with validation rules |
@@ -102,24 +85,22 @@ See [`docs/developer-flow.md`](docs/developer-flow.md) for the full flow diagram
 
 **Infrastructure** — DNS Records, IPAM, Load Balancer VIP, Config Drift, Compliance Audit
 
-Each spec has 9 sections: Problem Statement, Flow, Phases, Design Decisions, Scope, Risks, Requirements, Batch Strategy, and Acceptance Criteria.
-
 ---
 
 ## Docs
 
-- [`docs/quickstart.md`](docs/quickstart.md) — end-to-end user guide: install, setup, first delivery
+- [`docs/quickstart.md`](docs/quickstart.md) — install, setup, and first delivery walkthrough
 - [`docs/developer-flow.md`](docs/developer-flow.md) — full lifecycle diagram and design principles
-- [`docs/builder-flow.md`](docs/builder-flow.md) — build sequence and import pattern
-- [`helpers/`](helpers/) — JSON scaffolds and reference workflow patterns
+- [`docs/builder-flow.md`](docs/builder-flow.md) — build sequence, asset structure, and import pattern
+- [`helpers/`](helpers/) — JSON scaffolds for workflows, templates, and projects
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) to get started.
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) to get started. Before contributing, you'll need to sign our [Contributor License Agreement](CLA.md).
 
-Before contributing, you'll need to sign our [Contributor License Agreement](CLA.md).
+---
 
 ## Support
 
@@ -128,9 +109,11 @@ Before contributing, you'll need to sign our [Contributor License Agreement](CLA
 - **Lead Maintainer**: [@keepithuman](https://github.com/keepithuman)
 - **Maintainer**: [@wcollins](https://github.com/wcollins)
 
+---
+
 ## License
 
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU General Public License v3.0 — see the [LICENSE](LICENSE) file for details.
 
 ---
 
