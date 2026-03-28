@@ -28,7 +28,7 @@ Requirements  →  Feasibility  →  Design  →  Build  →  As-Built
 Add the marketplace and install the plugin:
 
 ```bash
-/plugin marketplace add itential/builder-skills-dev
+/plugin marketplace add itential/builder-skills
 /plugin install itential-builder@itential-builder
 ```
 
@@ -118,8 +118,8 @@ Before contributing, you'll need to sign our [Contributor License Agreement](CLA
 
 ## Support
 
-- **Bug Reports**: [Open an issue](https://github.com/itential/builder-skills-dev/issues/new)
-- **Questions**: [Start a discussion](https://github.com/itential/builder-skills-dev/discussions)
+- **Bug Reports**: [Open an issue](https://github.com/itential/builder-skills/issues/new)
+- **Questions**: [Start a discussion](https://github.com/itential/builder-skills/discussions)
 - **Lead Maintainer**: [@keepithuman](https://github.com/keepithuman)
 - **Maintainer**: [@wcollins](https://github.com/wcollins)
 
