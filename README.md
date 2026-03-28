@@ -1,4 +1,4 @@
-# Itential — Builder Skills
+# Itential — Agentic Builder Skills for Automation and Orchestration
 
 [![License](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
 
