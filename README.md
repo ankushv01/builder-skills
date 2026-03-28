@@ -56,7 +56,7 @@ See [`docs/quickstart.md`](docs/quickstart.md) for the full setup and first deli
 "I want to explore what's available on my platform"
 → /itential-builder:explore
 
-"Run a compliance check across my devices"
+"Help me build a golden config for my devices and run compliance"
 → /itential-builder:itential-golden-config
 ```
 
