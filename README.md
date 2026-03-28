@@ -25,14 +25,17 @@ Requirements  →  Feasibility  →  Design  →  Build  →  As-Built
 
 ## Getting Started
 
+Add the marketplace and install the plugin:
+
 ```bash
-/plugin install itential-builder@claude-plugins-official
+/plugin marketplace add itential/builder-skills-dev
+/plugin install itential-builder@itential-builder
 ```
 
-Point at your platform:
+Copy an environment template and point at your platform:
 
 ```bash
-/itential-builder:setup
+cp environments/cloud-lab.env my-use-case/.env   # edit with your credentials
 ```
 
 ---
@@ -67,7 +70,6 @@ See [`docs/developer-flow.md`](docs/developer-flow.md) for the full flow diagram
 
 | Skill | What It Does |
 |-------|-------------|
-| `/itential-builder:setup` | Initialize credentials for the current working directory |
 | `/itential-builder:spec-agent` | Requirements — refine use case, produce approved HLD |
 | `/itential-builder:solution-arch-agent` | Feasibility + Design — assess platform, produce solution design |
 | `/itential-builder:builder-agent` | Build + As-Built — implement design, test, deliver, document |
@@ -77,6 +79,10 @@ See [`docs/developer-flow.md`](docs/developer-flow.md) for the full flow diagram
 | `/itential-builder:flowagent` | Create and run AI agents (LLM providers, tools, missions) |
 | `/itential-builder:iag` | IAG services — Python, Ansible, OpenTofu via iagctl |
 | `/itential-builder:itential-mop` | Command templates with validation rules |
+| `/itential-builder:itential-devices` | Devices, backups, diffs, device groups |
+| `/itential-builder:itential-golden-config` | Golden config, compliance, grading, remediation |
+| `/itential-builder:itential-inventory` | Device inventories, nodes, actions, tags |
+| `/itential-builder:itential-lcm` | Resource models, instances, lifecycle actions |
 
 ---
 
@@ -112,8 +118,8 @@ Before contributing, you'll need to sign our [Contributor License Agreement](CLA
 
 ## Support
 
-- **Bug Reports**: [Open an issue](https://github.com/itential/builder-skills/issues/new)
-- **Questions**: [Start a discussion](https://github.com/itential/builder-skills/discussions)
+- **Bug Reports**: [Open an issue](https://github.com/itential/builder-skills-dev/issues/new)
+- **Questions**: [Start a discussion](https://github.com/itential/builder-skills-dev/discussions)
 - **Lead Maintainer**: [@keepithuman](https://github.com/keepithuman)
 - **Maintainer**: [@wcollins](https://github.com/wcollins)
 
