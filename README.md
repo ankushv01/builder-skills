@@ -1,4 +1,6 @@
-# Itential — Agentic Automation & Orchestration
+# Itential — Builder Skills
+
+[![License](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
 
 From spec to delivery — infrastructure automation and orchestration driven by AI agents.
 
@@ -24,15 +26,13 @@ Requirements  →  Feasibility  →  Design  →  Build  →  As-Built
 ## Getting Started
 
 ```bash
-git clone https://github.com/itential/itential-skills.git
-cd itential-skills
-claude
+/plugin install itential-builder@claude-plugins-official
 ```
 
-Claude Code loads `CLAUDE.md` and all skills automatically. Point at your platform:
+Point at your platform:
 
 ```bash
-cp environments/cloud-lab.env my-use-case/.env   # edit with your credentials
+/itential-builder:setup
 ```
 
 ---
@@ -41,22 +41,22 @@ cp environments/cloud-lab.env my-use-case/.env   # edit with your credentials
 
 **Deliver from Spec** — structured end-to-end delivery with artifact-based approvals:
 ```
-/spec-agent → /solution-arch-agent → /builder-agent
+/itential-builder:spec-agent → /itential-builder:solution-arch-agent → /itential-builder:builder-agent
 ```
 
 **FlowAgent to Spec** — convert an agent's proven pattern into a deterministic workflow:
 ```
-/flowagent-to-spec → /solution-arch-agent → /builder-agent
+/itential-builder:flowagent-to-spec → /itential-builder:solution-arch-agent → /itential-builder:builder-agent
 ```
 
 **Generate Spec from Project** — extract formal documentation from existing automation:
 ```
-/project-to-spec
+/itential-builder:project-to-spec
 ```
 
 **Explore** — connect to a platform, browse capabilities, build freely:
 ```
-/explore
+/itential-builder:explore
 ```
 
 See [`docs/developer-flow.md`](docs/developer-flow.md) for the full flow diagram and design principles.
@@ -67,19 +67,16 @@ See [`docs/developer-flow.md`](docs/developer-flow.md) for the full flow diagram
 
 | Skill | What It Does |
 |-------|-------------|
-| `/spec-agent` | Requirements — refine use case, produce approved HLD |
-| `/solution-arch-agent` | Feasibility + Design — assess platform, produce solution design |
-| `/builder-agent` | Build + As-Built — implement design, test, deliver, document |
-| `/flowagent-to-spec` | Read a FlowAgent → produce deterministic workflow spec |
-| `/project-to-spec` | Read an existing project → produce spec + design docs |
-| `/explore` | Auth, discover platform, browse freely |
-| `/flowagent` | Create and run AI agents (LLM providers, tools, missions) |
-| `/iag` | IAG services — Python, Ansible, OpenTofu via iagctl |
-| `/itential-devices` | Devices, backups, diffs, device groups |
-| `/itential-golden-config` | Golden config, compliance, grading, remediation |
-| `/itential-mop` | Command templates with validation rules |
-| `/itential-inventory` | Device inventories, nodes, actions, tags |
-| `/itential-lcm` | Resource models, instances, lifecycle actions |
+| `/itential-builder:setup` | Initialize credentials for the current working directory |
+| `/itential-builder:spec-agent` | Requirements — refine use case, produce approved HLD |
+| `/itential-builder:solution-arch-agent` | Feasibility + Design — assess platform, produce solution design |
+| `/itential-builder:builder-agent` | Build + As-Built — implement design, test, deliver, document |
+| `/itential-builder:flowagent-to-spec` | Read a FlowAgent → produce deterministic workflow spec |
+| `/itential-builder:project-to-spec` | Read an existing project → produce spec + design docs |
+| `/itential-builder:explore` | Auth, discover platform, browse freely |
+| `/itential-builder:flowagent` | Create and run AI agents (LLM providers, tools, missions) |
+| `/itential-builder:iag` | IAG services — Python, Ansible, OpenTofu via iagctl |
+| `/itential-builder:itential-mop` | Command templates with validation rules |
 
 ---
 
@@ -103,5 +100,28 @@ Each spec has 9 sections: Problem Statement, Flow, Phases, Design Decisions, Sco
 
 - [`docs/developer-flow.md`](docs/developer-flow.md) — full lifecycle diagram and design principles
 - [`docs/builder-flow.md`](docs/builder-flow.md) — build sequence and import pattern
-- [`evals/`](evals/) — skill evals (52 test cases) and e2e test runner
 - [`helpers/`](helpers/) — JSON scaffolds and reference workflow patterns
+
+---
+
+## Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) to get started.
+
+Before contributing, you'll need to sign our [Contributor License Agreement](CLA.md).
+
+## Support
+
+- **Bug Reports**: [Open an issue](https://github.com/itential/builder-skills/issues/new)
+- **Questions**: [Start a discussion](https://github.com/itential/builder-skills/discussions)
+- **Maintainer**: [@wcollins](https://github.com/wcollins)
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<p align="center">
+  Made with ❤️ by the <a href="https://github.com/itential">Itential</a> community
+</p>
