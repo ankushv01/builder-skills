@@ -133,7 +133,7 @@ Point to the right skill for what the engineer wants to do:
 ## Gotchas
 
 - OAuth MUST use `Content-Type: application/x-www-form-urlencoded`, not JSON
-- Tokens expire mid-session — re-authenticate silently from `.env` on auth errors
+- Tokens expire mid-session — on any 401/403, re-authenticate silently: read credentials from `{use-case}/.env` or `environments/*.env`, call the auth endpoint, update `.auth.json` with the new token, and retry the failed request. Never prompt the user for credentials if `.env` exists.
 - OpenAPI spec is ~1.5MB — search locally with `jq`, never load into context
 - `tasks/list` `app` field has WRONG casing for adapters — use `apps/list` for correct names
 - Devices endpoint is POST not GET — body required
