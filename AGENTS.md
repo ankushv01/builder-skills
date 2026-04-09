@@ -186,6 +186,9 @@ Requirements  →  Feasibility  →  Design  →  Build  →  As-Built
 21. **Duplicate transition keys to same target** — JSON doesn't allow two keys with the same name. If a task needs both `success` and `error` to reach `workflow_end`, create an error handler task (e.g., `newVariable` to set error status) and route error there, then route that task to `workflow_end`.
 22. **Respect task schema data types** — When wiring task inputs, match the type from `task-schemas.json` exactly. If a field is typed as `array`, pass an array (e.g., `["joksan@example.com"]`), not a bare string. If typed as `number`, pass a number, not a string. Common offenders: `to`/`cc`/`bcc` in email tasks (arrays, not strings), `pageSize`/`page` in queries (numbers, not strings). Mismatched types cause silent failures or validation errors.
 23. **Adapter `app` ≠ adapter instance name** — The `app` and `locationType` fields on adapter tasks must be the adapter **type name** from `apps.json` (e.g., `EmailOpensource`, `Servicenow`), NOT the adapter **instance name** from `adapters.json` (e.g., `email`, `servicenow-prod`). Using the instance name causes `"No config found for Adapter: <name>"` at runtime. The `adapter_id` field is where the instance name goes. Triple-check: `app` = type, `adapter_id` = instance.
+24. **Project-scoped asset names** — once an asset is added to a project, its `name` is prefixed with `@{projectId}: `. When updating via PUT, you MUST include this prefix or the API returns 400. Read the asset first to get the scoped name, or construct it as `@{projectId}: {displayName}`.
+25. **Check task output variable names from schema** — don't guess camelCase vs snake_case. Common gotcha: `renderJinjaTemplate` outputs `renderedTemplate` (camelCase), not `rendered_template`. Always fetch the schema and check `variables.outgoing` keys before wiring.
+
 
 ## Helper JSON Templates
 
