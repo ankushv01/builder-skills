@@ -6,6 +6,7 @@
   "location": "Adapter",
   "locationType": "",
   "app": "",
+  "adapter_id":"",
   "type": "automatic",
   "displayName": "",
   "variables": {
