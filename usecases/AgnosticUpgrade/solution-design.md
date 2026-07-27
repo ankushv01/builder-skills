@@ -297,3 +297,109 @@ Everything in §F was found by reading the project's own components. This sectio
 8. **Project 408 membership/ACL, while resolvable, isn't in solution-design.md's inventory:** owner `ankush.vasishta@itential.com`, editor `maanas.manjunath@itential.com`, group `admins` (editor). Noted here for completeness; add to §A if ACL matters for the delivery record.
 
 **Bottom line:** items 1–4 are concrete, verified blockers *on this specific platform* — even setting aside §F's cross-project wiring questions, `Agnostic Upgrade` as configured in project 408 would fail at the NetBox lookup, the file transfer, and (separately) has no confirmed way to be started, all before ever reaching a device. This reinforces §F.1's read that project 408 is a snapshot/copy: the two successful job runs in §G almost certainly executed against a *different, fully-configured* environment, not this one.
+
+## J. Proposed Extension — HA Pair Support (design only, not yet built)
+
+### Why
+
+Evaluating whether this architecture extends to Palo Alto HA firewall pairs surfaced a structural gap: `Agnostic Upgrade` has no concept of a device *pair* with ordered roles. Palo Alto's documented process (and HA-paired platforms on other vendors generally) requires: detect Active/Passive → suspend Passive → upgrade+verify Passive → suspend Active (failover) → upgrade+verify Active → optionally restore original roles. None of this exists today. This section is the proposed fix, designed to be vendor-agnostic (data-driven via NetBox, like everything else in this project) rather than a Palo-Alto-specific bolt-on.
+
+### Design constraint: `Agnostic Upgrade` is not modified
+
+All new logic lives in a **new wrapper workflow** — tentatively named **`HA Upgrade Wrapper`** — that calls the existing, unmodified `Agnostic Upgrade` as a childJob **twice**, once per pair member. This preserves the proven single-device orchestrator (backup → checks → upgrade → reconnect-loop → post-checks → `ViewDiff` approval → rollback) exactly as-is; `HA Upgrade Wrapper` only adds what's needed to sequence two calls to it safely.
+
+### Proposed new trigger
+
+**`HA Upgrade Form`** (new JSON form, alongside the existing `Upgrade Form`):
+- `version` (string, required)
+- `bootMode` (string, required)
+- `haPair` (array of exactly 2 device identifiers, required) — replaces the single-device `devices` field for this entry point
+- `emails` (string, required)
+- `restoreOriginalRoles` (boolean, optional, default `false`)
+
+### Proposed NetBox `upgrade-catalog` schema extension
+
+Four new fields on the per-device bundle (alongside the existing `check_command_sets`, `upgrade_sequence`, `rollback_sequence`, `validation_rules`, `images`, `image_transfer`, `diff_ignore_patterns`, `plugin`):
+
+| New field | Purpose | Example (Palo Alto) |
+|---|---|---|
+| `ha_role_query_command` | Determine Active/Passive | `show high-availability state` |
+| `ha_suspend_command` | Take this member out of active HA duty | `request high-availability state suspend` |
+| `ha_resume_command` | Restore this member to HA duty (if not automatic on reboot) | `request high-availability state functional` |
+| `ha_peer_verify_command` | Confirm the peer is still passing traffic before proceeding | `show session all` / `show interface all` |
+
+This keeps the same principle as every other command set in this project: vendor differences are catalog data, not workflow logic. **Not needed for the current Cisco use case** — the devices upgraded by `Agnostic Upgrade` today are standalone, not HA pairs, so these four fields would simply stay unpopulated for Cisco catalog entries. This extension exists specifically to support HA-paired platforms (Palo Alto firewalls being the immediate driver); it's additive and doesn't change how Cisco devices are handled.
+
+### Proposed `HA Upgrade Wrapper` structure
+
+```
+workflow_start
+   │
+   ▼
+1. Resolve HA pair context
+   childJob → Get Netbox Device and Context (called once per member, or extended to accept a pair)
+   → confirms haPair[0]/haPair[1] are a valid pair, returns each member's bundle incl. the 4 new ha_* commands
+   │
+   ▼
+2. Query role for both members (dynamic command template, reuse Create and Run Command Template)
+   → evaluate ha_role_query_command output → set passiveDevice / activeDevice
+   │
+   ▼
+3. Send "upgrade started" notification (NEW — today's Upgrade Wrapper only notifies at the end)
+   │
+   ▼
+4. LEG 1 — Passive member
+   a. Run ha_suspend_command against passiveDevice (dynamic command template)
+   b. Verify suspended (re-run ha_role_query_command, evaluate)
+   c. Verify activeDevice traffic unaffected (ha_peer_verify_command)
+   d. childJob → Agnostic Upgrade (UNMODIFIED) — devices=passiveDevice, version, bootMode
+   e. Evaluate Agnostic Upgrade's `success` output:
+        failure ──► ABORT: do not proceed to Leg 2. Best-effort resume passiveDevice
+                    if only suspended (not yet mid-upgrade). Send failure notification. End.
+        success ──► continue
+   │
+   ▼
+5. Verify passiveDevice healthy on new version; run ha_resume_command if role doesn't
+   auto-clear on reboot (vendor-dependent — encode via ha_resume_command being empty/no-op
+   in the catalog for platforms where it's automatic)
+   │
+   ▼
+6. LEG 2 — Active member (now safe to touch — Passive is healthy on new code)
+   a. Run ha_suspend_command against activeDevice → forces failover to the upgraded Passive
+   b. Verify traffic shifted to passiveDevice
+   c. childJob → Agnostic Upgrade (UNMODIFIED) — devices=activeDevice, version, bootMode
+   d. Evaluate `success`:
+        failure ──► notify; flag for manual intervention (HA pair is now in a mixed/uncertain
+                    state — do not attempt further automated changes)
+        success ──► continue
+   │
+   ▼
+7. Optional: if restoreOriginalRoles — suspend/resume to swap roles back to original assignment
+   │
+   ▼
+8. Final combined verification (both members same version, HA re-synced)
+   │
+   ▼
+9. Consolidated final notification — ONE email summarizing both legs' outcomes
+   │
+   ▼
+workflow_end
+```
+
+**Why call `Agnostic Upgrade` directly, not `Upgrade Wrapper`:** `Upgrade Wrapper` sends its own per-call email. Calling it twice would produce two separate, uncoordinated notifications for what is operationally one change. `HA Upgrade Wrapper` bypasses `Upgrade Wrapper` and calls `Agnostic Upgrade` directly, taking over the notification responsibility itself (step 3 and step 9) so the engineer gets one coherent start/end pair of emails for the whole HA operation.
+
+### What this reuses vs. adds
+
+| | Reused as-is | New |
+|---|---|---|
+| Per-device upgrade (backup, checks, upgrade, reconnect, post-checks, rollback, approval) | ✅ `Agnostic Upgrade`, unmodified | — |
+| Dynamic command templating mechanism | ✅ `DynamicTemplateCreation` / `Create and Run Command Template` | New command *content* only (role-query/suspend/resume, as catalog data) |
+| NetBox-catalog-driven, vendor-neutral command resolution | ✅ same pattern | 4 new schema fields |
+| Notification mechanism | ✅ `mailWithOptions` / `Parse Emails` | New call sites (start-of-run, consolidated end) |
+| HA role detection, ordering, abort gate | — | ✅ New — the core addition |
+| `HA Upgrade Wrapper` workflow itself | — | ✅ New |
+| `HA Upgrade Form` | — | ✅ New |
+
+### Status
+
+Design only. Not implemented, and not testable in this sandbox — no HA-capable adapters or devices are configured here (see §I). Before building: confirm the `ha_resume_command` behavior assumption (automatic-on-reboot vs. requires-explicit-command) per target vendor, and decide whether `Get Netbox Device and Context` should be extended to accept a pair directly or continue being called once per member from the wrapper.

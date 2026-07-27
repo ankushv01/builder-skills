@@ -143,3 +143,22 @@ Two completed job records were supplied and analyzed to validate this spec again
 Both runs took the full happy path (no rollback, no reconnect retries beyond the first check, diff approved). No real example yet exists for a validation failure, rollback, or reconnect-exhaustion run — if acceptance testing is planned, these branches should be exercised deliberately since they're unvalidated by real data so far.
 
 **Open question surfaced by the real data:** both runs pass `devices` as a single device string, not an array, even though the trigger form (`Upgrade Form`) types `devices` as an array. Confirm with the engineer whether upstream fan-out (one call per device) is expected, or the array typing needs correcting.
+
+## 11. Proposed Extension: HA Pair Support (design — not yet built)
+
+**Driver:** while evaluating whether this design could extend to Palo Alto firewalls (see the Palo Alto gap analysis conducted this session), the single-device model was found to have no concept of High Availability (HA) pairs — active/passive firewall pairs require a specific suspend → upgrade → verify → fail-over → repeat ordering that today's `Agnostic Upgrade`/`Upgrade Wrapper` cannot express. This section captures the proposed design to close that gap, decided before any Palo Alto-specific work begins, so the HA capability is vendor-agnostic from the start rather than built as a Palo Alto special case. **Not a Cisco requirement** — the devices this project upgrades for Cisco today are standalone, not HA pairs; this extension is purely additive and doesn't change Cisco's existing flow.
+
+**Design principle: wrapper-only change.** `Agnostic Upgrade` (the proven single-device orchestrator) requires **zero modification**. All HA-pair awareness lives in a new wrapper layer that calls the existing orchestrator twice — once per pair member — in the correct order. This was a deliberate choice to avoid touching a working core workflow.
+
+**Two safety decisions made (engineer-confirmed):**
+1. **If the first (Passive) member's upgrade fails or triggers its own internal rollback, the wrapper aborts before ever touching the second (Active) member.** Never touch the device currently carrying all live traffic if its peer isn't confirmed healthy on the new code.
+2. **Each HA member's `ViewDiff` approval stays inside `Agnostic Upgrade` and is approved separately**, once per leg — not collected into one combined cross-member approval. This keeps the core workflow completely unmodified.
+
+**New capability requirements:**
+- Resolve which 2 devices form a pair, and their current Active/Passive roles, before starting either leg
+- Suspend/resume and role-query operations, expressed as data (NetBox catalog entries) rather than vendor-specific code — the same pattern already used for check/upgrade/rollback command sets
+- Ordered execution: Passive first, then Active, with an abort gate between legs
+- A single consolidated start-of-upgrade and end-of-upgrade notification covering both legs (today's `Upgrade Wrapper` only notifies once, at the end, per single device)
+- Optional role-restore after both legs complete, if the original Active/Passive assignment matters operationally
+
+See `solution-design.md` §J for the full proposed workflow structure and NetBox schema extension. This is a design proposal only — not yet implemented, and not testable in the current sandbox environment since it has no HA-capable adapters/devices configured.
