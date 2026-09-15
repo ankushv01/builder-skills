@@ -366,7 +366,7 @@ If both success and error need to reach `workflow_end`, route error to an interm
 
 **Step 9: Pre-submit checklist.**
 - [ ] Every task has a non-empty `description` field — schema-required on every task, easy to forget, and `POST /workflow_engine/workflows/validate` will reject a document missing it
-- [ ] Task IDs are hex-only (`[0-9a-f]{1,4}`)
+- [ ] Task IDs are hex-only (`[0-9a-f]{1,4}`) — verify with `python3 -c "import json,re; d=json.load(open('workflow.json')); bad=[k for k in d['tasks'] if k not in ('workflow_start','workflow_end') and not re.match(r'^[0-9a-f]{1,4}$', k)]; print(bad or 'OK')"` rather than eyeballing the task list. A non-hex ID (e.g. `g007`, using a letter outside `a`–`f`) doesn't error at creation time — it causes intermittent, hard-to-diagnose `$var` resolution failures later (evaluation operands silently drilling into the wrong value, string references passing through as unresolved literal text) that look like unrelated wiring bugs.
 - [ ] `app` and `locationType` values come from apps.json `.name`, NOT tasks.json and NOT the adapter instance name (e.g., `EmailOpensource` not `email`)
 - [ ] `adapter_id` is the adapter **instance** name (e.g., `email`), NOT the type name
 - [ ] `adapter_id` values come from `adapters.json` `.results[].id` — NEVER from the spec's adapter identity table. The spec is a design document; `adapters.json` is the source of truth for the target environment.
@@ -1121,6 +1121,53 @@ y=528  — evaluation   (x=600)
 #### Horizontal Layout (only when requested)
 
 If the engineer explicitly asks for horizontal, swap x and y throughout: phases advance on x, fork branches offset on y, spine becomes a constant y row. Same magnitudes, opposite axes.
+
+#### Verifying Layout After Build — Don't Just Eyeball the Checklist
+
+The spine/fork/convergence convention above is easy to violate without noticing, because each task's `nodeLocation` is usually set incrementally as it's created — relative to whatever was placed immediately before it, not to the graph as a whole. A workflow can be 100% correctly wired (every transition right, every `$var` resolving) and still render with failure/error-branch tasks scattered at inconsistent x-offsets and heights, each needing a long diagonal line back to wherever the workflow actually ends. That's a real, observed failure mode — not hypothetical — and the checklist bullets above only catch it if you deliberately re-read every `nodeLocation` against the convention, which is easy to skip once the workflow otherwise looks "done."
+
+Verify mechanically instead of by eye. After wiring all tasks and transitions, before calling Build complete, run something like this against the built workflow's `tasks`/`transitions`:
+
+```python
+import json
+
+wf = json.load(open("workflow.json"))  # or wf["items"][0] from a GET
+tasks, transitions = wf["tasks"], wf["transitions"]
+
+xs = [t["nodeLocation"]["x"] for tid, t in tasks.items() if tid not in ("workflow_start", "workflow_end")]
+spine = max(set(xs), key=xs.count)  # most common x = the spine
+
+violations = []
+for tid, t in tasks.items():
+    if tid in ("workflow_start", "workflow_end"):
+        continue
+    x = t["nodeLocation"]["x"]
+    if x != spine and abs(x - spine) != 264:
+        violations.append(f"{tid} ({t.get('summary') or t.get('name')}): x={x}, not spine ({spine}) or spine±264")
+
+# Flag any task whose incoming transitions come from tasks with wildly different y —
+# a large y-gap into a task usually means an earlier removal/reorder left a stale position.
+# Skip revert transitions entirely: they're supposed to go backward (retry loops), so a
+# negative y-delta there is correct wiring, not a layout violation.
+for src, dsts in transitions.items():
+    if src not in tasks:
+        continue
+    for dst, edge in dsts.items():
+        if dst not in tasks or edge.get("type") == "revert":
+            continue
+        dy = tasks[dst]["nodeLocation"]["y"] - tasks[src]["nodeLocation"]["y"]
+        if dy < 0 or dy > 200:
+            violations.append(f"{src} -> {dst}: y-delta={dy} (expect ~108, or a deliberate fork/convergence jump)")
+
+if violations:
+    print("Layout violations found — fix nodeLocation before considering Build done:")
+    for v in violations:
+        print(" -", v)
+else:
+    print("Layout OK: spine =", spine)
+```
+
+Re-run this after every PUT that adds, removes, or rewires a task — not just once at the end. Removing a task (e.g. an error-handling branch that got redesigned out) is a common way to leave a gap that stretches every task after it, which this catches immediately instead of leaving it for the engineer to notice on the canvas later.
 
 ---
 
