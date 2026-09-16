@@ -14,6 +14,7 @@ Spec-driven infrastructure automation and orchestration — delivered by AI agen
   - [Getting Started](#getting-started)
   - [How to Use It](#how-to-use-it)
   - [Skills](#skills)
+  - [Customization](#customization)
   - [Spec Library](#spec-library)
   - [Demo Specs](#demo-specs)
   - [Docs](#docs)
@@ -46,52 +47,36 @@ The result is infrastructure automation that is traceable, repeatable, and deliv
 
 | Requirement | Version | Notes |
 |-------------|---------|-------|
-| Itential Platform | 6.x | |
-| IAG | 5.x | Required only for the `/iag` skill |
-| Claude Code | Latest | [Install guide](https://claude.ai/code) |
+| Itential Platform | 6.x | Target platform for every skill |
+| IAG | 5.x | Only for the `/iag` skill |
+| AI coding tool | — | [Claude Code](https://claude.ai/code) is the primary target (`.claude/skills/<name>/SKILL.md`, plugin install, `/plugin update`). Copilot reads the same `.claude/skills` path. Codex CLI and Cursor read `.agents/skills` instead — symlinked here to `.claude/skills`. See `AGENTS.md`. |
 
 ---
 
 ## Getting Started
 
-**Install the plugin:**
+**Install:**
 
-```bash
-/plugin marketplace add itential/builder-skills
-/plugin install itential-builder@itential-builder
-```
-
-**Already installed? Update to the latest version:**
-
-```bash
-/plugin update itential-builder@itential-builder
-```
+| Tool | Steps |
+|------|-------|
+| **Claude Code** | `/plugin marketplace add itential/builder-skills` then `/plugin install itential-builder@itential-builder`. Update anytime with `/plugin update itential-builder@itential-builder`. |
+| **Codex CLI** | `codex plugin marketplace add itential/builder-skills` registers this repo (reads `.agents/plugins/marketplace.json`), then install it from Codex's Plugins UI. |
+| **GitHub Copilot** | No install step. Clone or open this repo — Copilot's coding agent reads `.claude/skills` directly. |
+| **Cursor** | No install step. Clone or open this repo — Cursor auto-discovers skills from `.agents/skills` on start. |
 
 **First-time setup:**
 
-Create a folder for your use case and add a `.env` file with your platform credentials:
+Create a folder for your use case and copy the environment template that matches your platform:
 
 ```bash
-mkdir my-use-case && cd my-use-case
+mkdir my-use-case
+cp environments/cloud-lab.env my-use-case/.env   # Cloud / OAuth
+# or: cp environments/local-dev.env my-use-case/.env   (Local / Password)
+# or: cp environments/staging.env my-use-case/.env
+cd my-use-case
 ```
 
-**Cloud / OAuth:**
-```bash
-# my-use-case/.env
-PLATFORM_URL=https://your-instance.itential.io
-AUTH_METHOD=oauth
-CLIENT_ID=your-client-id
-CLIENT_SECRET=your-client-secret
-```
-
-**Local / Password:**
-```bash
-# my-use-case/.env
-PLATFORM_URL=http://localhost:4000
-AUTH_METHOD=password
-USERNAME=admin
-PASSWORD=admin
-```
+Open `.env` and fill in your values — `PLATFORM_URL`, plus either `CLIENT_ID`/`CLIENT_SECRET` (OAuth) or `USERNAME`/`PASSWORD` (local dev).
 
 Then start your first delivery from inside that folder:
 
@@ -121,8 +106,8 @@ See [`docs/quickstart.md`](docs/quickstart.md) for the full setup and first deli
 "I want to explore what's available on my platform"
 → /itential-builder:explore
 
-"Am I ready to move from IAG4 to IAG5?"
-→ /itential-builder:iag4-to-iag5
+"Am I ready to move from Gateway 4 (IAG4) to Gateway 5 (IAG5)?"
+→ /itential-builder:gateway4-to-gateway5
 
 "Help me build a golden config for my devices and run compliance"
 → /itential-builder:itential-golden-config
@@ -151,13 +136,36 @@ See [`docs/quickstart.md`](docs/quickstart.md) for the full setup and first deli
 |-------|-------------|
 | `/itential-builder:flowagent` | Creates and runs AI agents on the Itential Platform. Configures LLM providers, registers tools (adapters, workflows, IAG services), and runs agent sessions. Use when building or operating Flow AI agents. |
 | `/itential-builder:iag` | Builds and runs IAG 5 services — Python scripts, Ansible playbooks, OpenTofu plans. Manages YAML service definitions, imports via `iagctl`, and calls services from Itential workflows via GatewayManager. |
-| `/itential-builder:iag4-to-iag5` | Assesses readiness to migrate from IAG4 to IAG5. Scans workflows, JSON forms, scripts, playbooks, and inventory for IAG4 usage (`AGManager` / `automation_gateway`). Produces a deterministic markdown readiness report with a manual-action checklist. Read-only — never modifies the platform. For building IAG5 services after the assessment, use `/iag`. |
+| `/itential-builder:gateway4-to-gateway5` | Assesses readiness to migrate from Gateway4-IAG4 to Gateway5-IAG5. Scans workflows, JSON forms, scripts, playbooks, and inventory for Gateway4-IAG4 usage (`AGManager` / `automation_gateway`). Produces a deterministic markdown readiness report with a manual-action checklist. Read-only — never modifies the platform. For building Gateway5-IAG5 services after the assessment, use `/iag`. |
 | `/itential-builder:itential-mop` | Builds Method of Procedure command templates with variable substitution and validation rules. Runs CLI pre-checks and post-checks against devices, and uses analytic templates for before/after config comparison. |
 | `/itential-builder:itential-devices` | Manages network devices in Itential Configuration Manager — onboard devices, take config backups, diff configurations, organize device groups, and apply device templates. |
 | `/itential-builder:itential-golden-config` | Builds golden config trees and node-level config specs that define the expected configuration standard for your devices. Runs compliance plans, grades results, and generates remediation configs for violations. |
 | `/itential-builder:itential-inventory` | Builds and manages device inventories in Itential Inventory Manager. Populates nodes in bulk, assigns tags, runs actions against inventory devices, and manages inventory-level access and grouping. |
 | `/itential-builder:itential-lcm` | Defines reusable service resource models in Itential Lifecycle Manager, creates and manages resource instances, runs lifecycle actions, and tracks execution history. Use for service models that have create, update, and delete lifecycle phases. |
 | `/itential-builder:itential-json-forms` | Builds IAP JSON Forms — static-enum dropdowns, REST-bound dropdowns (live data from IAP endpoints), and cascading dropdowns (field dependency). Use when wiring structured input panels for manual triggers or manual tasks. |
+
+---
+
+## Customization
+
+Every skill above is foundational — owned and updated by Itential. Don't edit a skill's `SKILL.md` directly; those edits get silently overwritten (or produce merge conflicts) the next time this plugin is updated.
+
+Instead, every skill has a `custom/` folder with three layers, read automatically before the skill acts. More specific overrides less specific — `dev` overrides `team` overrides `org` overrides the foundational skill:
+
+```
+.claude/skills/<skill-name>/
+├── SKILL.md              ← foundational, Itential-owned — never edit this
+└── custom/
+    ├── org/                ← company-wide rules (e.g. naming conventions, security policy)
+    ├── team/               ← your team's rules
+    └── dev/                ← your own local overrides and drafts
+```
+
+See [`.claude/CUSTOMIZATION.md`](.claude/CUSTOMIZATION.md) for the full framework — precedence rules, the required format for stating an override, and a decision guide for which layer a given customization belongs in.
+
+**Two ways to consume this repo, both safe for `custom/` content:**
+- **Plugin install** (`/plugin update itential-builder@itential-builder`) — simplest. Claude Code's plugin installer keeps each marketplace as a real git clone updated via fetch/merge, so untracked `custom/` content survives an update the same way any untracked file survives a `git pull` (verified directly — see `.claude/CUSTOMIZATION.md`).
+- **Clone or fork directly** — skip the plugin installer, `git pull`/`git merge` from upstream yourself. Same guarantee, plus the option to track and share your `custom/` files across your team. Full setup and update commands are in `.claude/CUSTOMIZATION.md`.
 
 ---
 
@@ -193,6 +201,7 @@ Ready-to-run specs in [`spec-files/demo/`](spec-files/demo/) for walkthroughs an
 - [`docs/developer-flow.md`](docs/developer-flow.md) — full lifecycle diagram and design principles
 - [`docs/builder-flow.md`](docs/builder-flow.md) — build sequence, asset structure, and import pattern
 - [`docs/troubleshooting.md`](docs/troubleshooting.md) — common issues and fixes
+- [`.claude/CUSTOMIZATION.md`](.claude/CUSTOMIZATION.md) — customize any skill without editing it directly (org/team/dev layers)
 - [`helpers/`](helpers/) — JSON scaffolds for workflows, templates, projects, and reference patterns
 
 ---
@@ -208,7 +217,6 @@ Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md)
 - **Bug Reports**: [Open an issue](https://github.com/itential/builder-skills/issues/new)
 - **Questions**: [Start a discussion](https://github.com/itential/builder-skills/discussions)
 - **Lead Maintainer**: [@keepithuman](https://github.com/keepithuman)
-- **Maintainer**: [@wcollins](https://github.com/wcollins)
 
 ---
 

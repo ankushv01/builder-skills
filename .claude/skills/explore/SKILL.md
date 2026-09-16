@@ -11,6 +11,18 @@ description: Use this skill whenever someone wants to connect to an Itential pla
 
 ---
 
+## Customization
+
+Before using this skill, check `custom/org/`, `custom/team/`, and `custom/dev/`
+in this skill's own directory. Read every `.md` file found, in that order
+(any folder may be empty or absent). Apply them in addition to everything
+below — where a file overrides a specific rule from this document, prefer
+the override; more specific wins (dev over team over org). See
+`.claude/CUSTOMIZATION.md` for the full framework and what belongs in
+which layer.
+
+---
+
 ## What This Does
 
 Connects you to a platform, pulls everything needed to work freely, and routes you to the right skill for whatever you want to do.
@@ -111,7 +123,7 @@ Show:
 - Devices: count and OS types (if available)
 - Existing workflows: count
 
-> **Visibility note:** Itential Automation Studio access control has two layers. **Project-scoped assets** (anything inside a named project) are gated by **per-project ACLs** — the calling client only sees projects whose ACL includes the client or one of its groups, and there is no platform-wide "admin" or "all-projects" role. **Global Automation Studio assets** (workflows, templates, etc. that live outside any project) are not access-restricted that way and are visible to any authenticated client. If the engineer expects a specific *project* (or any asset inside one) and it does not appear, treat it as *possibly access-restricted*, not *missing* — see the gotcha below. For global assets, absence is real absence.
+> **Visibility note:** see AGENTS.md's "Project Visibility" section — project-scoped assets are ACL-gated, global assets aren't. If the engineer expects a specific project and it doesn't appear, treat it as *possibly access-restricted*, not *missing*.
 
 ---
 
@@ -146,5 +158,5 @@ Point to the right skill for what the engineer wants to do:
 - OpenAPI spec is ~1.5MB — search locally with `jq`, never load into context
 - `tasks/list` `app` field has WRONG casing for adapters — use `apps/list` for correct names
 - Devices endpoint is POST not GET — body required
-- **Project list responses are RBAC-filtered — absence in the project list does NOT mean the project doesn't exist.** Itential projects use per-project ACLs only: every project explicitly grants access to specific users or groups, and there is no platform-wide "admin" or "all-projects" role. If the engineer names a specific *project* (or any asset inside one) you can't find, say *"not visible to this client (`{client_id}`) — possibly access-restricted; ask the project owner (or someone with manage rights on that project) to add `{client_id}` to its ACL"* rather than *"doesn't exist"*. Never grant access to yourself — ask the engineer how to proceed. **Global Automation Studio assets** (anything outside a named project) are not access-restricted in the same way; for those, absence in the API response is real absence.
+- **Project list responses are RBAC-filtered — absence does NOT mean the project doesn't exist.** See AGENTS.md's Project Visibility section. If the engineer names a specific project you can't find, say *"not visible to this client (`{client_id}`) — possibly access-restricted; ask the project owner to add `{client_id}` to its ACL"* rather than *"doesn't exist."*
 - `PATCH /automation-studio/projects/{id}` silently ignores an `accessControl` body — use the `members` array instead: `[{"type": "account"|"group", "reference": "<id>", "role": "owner"|"editor"|"operator"|"viewer"}]`. See [#62](https://github.com/itential/builder-skills/issues/62)

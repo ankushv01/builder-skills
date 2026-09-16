@@ -1,16 +1,28 @@
 ---
-name: iag4-to-iag5
-description: Assess how ready an environment is to move from Itential Automation Gateway 4 (IAG4) to IAG5. Use for phrases like "am I ready to move to IAG5", "assess my IAG4 to IAG5 migration", "what do I need to change to switch off gateway 4", "scan my workflows for automation gateway usage", "which workflows use IAG4", "IAG4 readiness report", or "evaluate my gateway migration". This skill does NOT perform the migration — it analyzes IAP assets (workflows in and out of projects, JSON forms) and IAG4 assets (scripts, playbooks, roles, inventory), then writes a deterministic markdown guideline of the manual actions the user must take. It is strictly READ-ONLY against IAP and IAG — it never creates, updates, or deletes anything on the platform; its only write is the report in the working directory. It can also run in a LOCAL-FILES-ONLY mode with no API access. The rendered report uses the terms "Itential Gateway4"/"Gateway4" and "Itential Gateway5"/"Gateway5" (never "IAG"). For actually building IAG5 services, use /iag.
+name: gateway4-to-gateway5
+description: Assess how ready an environment is to move from Itential Automation Gateway 4 (IAG4) to Gateway 5 (IAG5). Use for phrases like "am I ready to move to IAG5", "assess my IAG4 to IAG5 migration", "what do I need to change to switch off gateway 4", "scan my workflows for automation gateway usage", "which workflows use IAG4", "IAG4 readiness report", or "evaluate my gateway migration". This skill does NOT perform the migration — it analyzes IAP assets (workflows in and out of projects, JSON forms) and IAG4 assets (scripts, playbooks, roles, inventory), then writes a deterministic markdown guideline of the manual actions the user must take. It is strictly READ-ONLY against IAP and IAG — it never creates, updates, or deletes anything on the platform; its only write is the report in the working directory. It can also run in a LOCAL-FILES-ONLY mode with no API access. The rendered report uses the terms "Itential Gateway4"/"Gateway4" and "Itential Gateway5"/"Gateway5" (never "IAG"). For actually building IAG5 services, use /iag.
 argument-hint: "[working-directory]"
 ---
 
-# IAG4 → IAG5 Readiness Assessment (iag4-to-iag5)
+# Gateway4-IAG4 → Gateway4-IAG5 Readiness Assessment (gateway4-to-gateway5)
 
 **Path:** Standalone analysis — not part of the delivery lifecycle. Sibling to `/iag`.
 **Owns:** Identifying IAG4 usage across IAP + IAG4 assets and reporting the manual migration steps.
-**Produces:** `<working-dir>/iag4-to-iag5-readiness.md` — one deterministic markdown report. All
+**Produces:** `<working-dir>/gateway4-to-gateway5-readiness.md` — one deterministic markdown report. All
 pulled JSON, the auth cache, and scratch files go under `<working-dir>/tmp/` — never the
 working-dir root. Only the report lives in the root.
+
+## Customization
+
+Before using this skill, check `custom/org/`, `custom/team/`, and `custom/dev/`
+in this skill's own directory. Read every `.md` file found, in that order
+(any folder may be empty or absent). Apply them in addition to everything
+below — where a file overrides a specific rule from this document, prefer
+the override; more specific wins (dev over team over org). See
+`.claude/CUSTOMIZATION.md` for the full framework and what belongs in
+which layer.
+
+---
 
 ## NON-NEGOTIABLE RULES (never break these)
 
@@ -27,12 +39,11 @@ them, STOP and ask the user instead.
    neither, ask. **Never contact Gateway5, and never use `iagctl`** — `iagctl` is a Gateway5 CLI (it
    does not exist on Gateway4). Gateway5 is entirely out of scope and must never be contacted or
    mentioned to the user.
-2. **Never make up information, and never contact Gateway5 directly.** Do NOT guess identifiers,
+2. **Never make up information.** (Gateway5/`iagctl` scope is covered by Rule 1 — this rule is about not guessing.) Do NOT guess identifiers,
    task classifications, workflow/task references, adapter names, or the contents of anything you
    could not read. If something is unknown, ambiguous, or unreadable, **go back to the user to
    clarify** — do not invent, infer, or fill in a plausible value. The analyzer's
    `unresolved_children`/`warnings` exist precisely so unknowns are surfaced, not fabricated.
-   Gateway5 is out of scope — never call it, `iagctl`, or any Gateway5 endpoint, and never mention it.
 3. **Respect the scan scope absolutely.** When the user points you at a project or specific
    workflow(s) (anything other than an explicit `--all`), analyze ONLY that item **plus** any other
    workflow/project it (or its children) references via childJob — the transitive downward closure.
@@ -72,12 +83,9 @@ directory** (the report, plus any pulled read-cache JSON).
   assets (scripts/playbooks/roles/inventory) from **either** a **local directory** the user supplies
   **or** read-only GETs against **Gateway4's HTTP API** when the user provides Gateway4
   username/password.
-- **Forbidden:** any create/update/delete/import/patch on IAP or Gateway4 — no state-mutating
-  `POST/PUT/PATCH/DELETE`, no editing/creating workflows, forms, projects, inventory, or gateway
-  assets. **Never contact Gateway5 and never use `iagctl`** — `iagctl` is a Gateway5 CLI and does
-  not exist on Gateway4; Gateway5 is out of scope (do not call it and do not mention it to the user).
-  If a step *would* mutate a platform, **do not do it** — record it in the report as a manual
-  action for the user.
+- **Forbidden:** any create/update/delete/import/patch on IAP or Gateway4 (see Rule 1 for the
+  Gateway5/`iagctl` scope boundary). If a step *would* mutate a platform, **do not do it** — record
+  it in the report as a manual action for the user.
 
 These two rules are agent guidance — they shape the recommendations but are **not** printed in
 the report (the report is a terse checklist, not a narrative):
@@ -98,8 +106,8 @@ authoritative reference for building the IAG5 service, the `--property_name` nam
 ## Determinism contract
 
 Same inputs ⇒ identical report. Enforce:
-- Fixed section set/order — from `${CLAUDE_PLUGIN_ROOT}/../../../helpers/iag-migration/readiness-report-template.md`. Never drop a section; empty sections render `No IAG4 references found.`
-- **The workflow + JSON-form findings are produced by `analyze_iag4.py`** (Step 2), not by the
+- Fixed section set/order — from `${CLAUDE_PLUGIN_ROOT}/../../../helpers/gateway-migration/readiness-report-template.md`. Never drop a section; empty sections render `No Gateway4 references found.`
+- **The workflow + JSON-form findings are produced by `analyze_gateway4.py`** (Step 2), not by the
   model — that script owns their determinism (detection, classification, sorting, aggregation).
   Its recommendation strings MUST stay byte-identical to the template. Render those sections
   verbatim from `tmp/analysis.json`; only the scripts + inventory sections are model-authored.
@@ -137,8 +145,7 @@ Same inputs ⇒ identical report. Enforce:
      exports already on disk), or none.
    - **Gateway4** — **live** (read-only GETs against Gateway4's HTTP API using the username/password
      the user provides) or a **local directory** of scripts/playbooks/roles/inventory, or none.
-   - **Never** offer, ask about, or use `iagctl` or any Gateway5 endpoint — Gateway5 is out of scope
-     (`iagctl` is a Gateway5 CLI and does not exist on Gateway4).
+   - (Gateway5/`iagctl` out of scope — see Rule 1.)
    - When a source is fully local, pass `--local` (and `--local-dir <dir>`) to the analyzer; it makes
      no API calls for that source. Anything referenced but not readable becomes a last-resort
      warning — never a guess.
@@ -305,11 +312,11 @@ chosen in Step 0:
 
 ```bash
 # live scoped run:
-python3 -B ${CLAUDE_PLUGIN_ROOT}/../../../helpers/iag-migration/analyze_iag4.py \
+python3 -B ${CLAUDE_PLUGIN_ROOT}/../../../helpers/gateway-migration/analyze_gateway4.py \
   --tmp <working-dir>/tmp \
   { --projects <id,id>  |  --workflows "Name A;Name B"  |  --all }
 # local-files-only run (no API): add --local (and --local-dir if the JSON isn't in tmp/):
-python3 -B ${CLAUDE_PLUGIN_ROOT}/../../../helpers/iag-migration/analyze_iag4.py \
+python3 -B ${CLAUDE_PLUGIN_ROOT}/../../../helpers/gateway-migration/analyze_gateway4.py \
   --tmp <working-dir>/tmp --local --local-dir <dir-of-workflow-json> \
   { --projects <id,id>  |  --workflows "Name A;Name B"  |  --all }
 # writes <working-dir>/tmp/analysis.json
@@ -422,7 +429,7 @@ Only if Gateway4 is in scope. Read the assets from whichever source the user has
 - **Gateway4 HTTP API** → read-only GETs against Gateway4 using the username/password the user
   provided (never a mutating call).
 
-Never use `iagctl` or any Gateway5 endpoint (out of scope). If the user has neither a local dir nor
+If the user has neither a local dir nor
 Gateway4 credentials, ask which they can provide; do not fabricate the asset list. Classify each
 file/asset and attach the verbatim recommendation:
 
@@ -459,8 +466,8 @@ Manager mapping guidance comes later.)
 
 ## Step 6 — Write the report
 
-Fill `${CLAUDE_PLUGIN_ROOT}/../../../helpers/iag-migration/readiness-report-template.md` and write
-`<working-dir>/iag4-to-iag5-readiness.md` (the report is the **only** file in the working-dir
+Fill `${CLAUDE_PLUGIN_ROOT}/../../../helpers/gateway-migration/readiness-report-template.md` and write
+`<working-dir>/gateway4-to-gateway5-readiness.md` (the report is the **only** file in the working-dir
 root — all pulled JSON and scratch stay in `tmp/`).
 
 **Recommendations via short CODES + one static legend.** Each Gateway4 task carries a short
@@ -494,8 +501,8 @@ Gateway4"/"Gateway4" and "Itential Gateway5"/"Gateway5". Keep literal API/app na
 identify them on the platform. When you fill the template: (1) substitute every `{{placeholder}}`,
 (2) **strip all `<!-- … -->` guidance comments** (they are for you, not the report), and (3) as a
 final self-check, confirm the written report contains no case-insensitive "iag" —
-`grep -i iag <working-dir>/iag4-to-iag5-readiness.md` must return nothing (the filename itself is not
-part of the file's content). If it matches, fix the wording before telling the user it's done.
+`grep -i iag <working-dir>/gateway4-to-gateway5-readiness.md` must return nothing. If it matches,
+fix the wording before telling the user it's done.
 
 **Render the deterministic sections straight from `tmp/analysis.json`** — do not recompute:
 - **Header** = a two-column key/value table (Generated, Working directory, Mode ← `mode`, Platform
@@ -626,12 +633,12 @@ they will say so and start a new, separate request (e.g. `/iag`); this skill nev
 - **`--all` paginates; scoped pulls don't.** The `workflows` list caps at 100/page — only the
   `--all` bulk pull loops on `total`. Scoped runs pull via project export / by-name instead.
 - **Static dropdowns are not a concern.** Only `binding: true` REST-bound dropdowns can point at Gateway4.
-- **The script owns workflow + form classification — never hand-classify.** `analyze_iag4.py`
+- **The script owns workflow + form classification — never hand-classify.** `analyze_gateway4.py`
   emits `python-script` as the default and computes interface/refs/closure. Only *unresolved
   identifiers* (empty `identifiers` block — Step 1b), an *unclear `.env` purpose*, or the *Step 0
   working-dir/scope/source questions* warrant a question — never the per-task approach or the source.
 - **Keep the recommendation strings in sync.** They live once as constants in
-  `helpers/iag-migration/analyze_iag4.py` and must match `readiness-report-template.md`
+  `helpers/gateway-migration/analyze_gateway4.py` and must match `readiness-report-template.md`
   verbatim. Change them in both places or determinism breaks.
 - **Ask working dir + scope + data source first.** If not supplied, ask up front (Step 0). Warn that
   `--all` can overflow a small model's context on large platforms.
@@ -646,5 +653,5 @@ they will say so and start a new, separate request (e.g. `/iag`); this skill nev
 - `/itential-inventory` — Inventory Manager, the IAG5 replacement for gateway inventory.
 - `/itential-json-forms` — REST-bound dropdown structure and `bindingSchema`.
 - `/explore` — auth + IAP pull mechanics reused in Step 1.
-- Analysis script: `${CLAUDE_PLUGIN_ROOT}/../../../helpers/iag-migration/analyze_iag4.py` (Step 2, deterministic).
-- Template: `${CLAUDE_PLUGIN_ROOT}/../../../helpers/iag-migration/readiness-report-template.md`.
+- Analysis script: `${CLAUDE_PLUGIN_ROOT}/../../../helpers/gateway-migration/analyze_gateway4.py` (Step 2, deterministic).
+- Template: `${CLAUDE_PLUGIN_ROOT}/../../../helpers/gateway-migration/readiness-report-template.md`.

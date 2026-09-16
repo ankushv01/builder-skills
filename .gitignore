@@ -86,16 +86,32 @@ use-cases/
 evals/workspace/
 
 # =============================================================================
+# Customer Skill Customization (see .claude/CUSTOMIZATION.md)
+# =============================================================================
+# Real override content lives only in a customer's own fork/clone — never in
+# this repo's tracked history, so an upstream pull can never conflict with or
+# overwrite it. Placeholder .gitkeep files are explicitly kept so the folder
+# structure ships and is discoverable.
+.claude/skills/*/custom/org/*
+.claude/skills/*/custom/team/*
+.claude/skills/*/custom/dev/*
+!.claude/skills/*/custom/org/.gitkeep
+!.claude/skills/*/custom/team/.gitkeep
+!.claude/skills/*/custom/dev/.gitkeep
+
+# =============================================================================
+# Python (scripts/)
+# =============================================================================
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# =============================================================================
 # MAINTAINER: Add language-specific patterns below
 # =============================================================================
 # Examples:
-#
-# Python:
-#   __pycache__/
-#   *.py[cod]
-#   .venv/
-#   venv/
-#   .pytest_cache/
 #
 # Node.js:
 #   node_modules/

@@ -12,7 +12,21 @@ description: Use this skill when someone has approved requirements (a customer-s
 
 ---
 
+## Customization
+
+Before using this skill, check `custom/org/`, `custom/team/`, and `custom/dev/`
+in this skill's own directory. Read every `.md` file found, in that order
+(any folder may be empty or absent). Apply them in addition to everything
+below — where a file overrides a specific rule from this document, prefer
+the override; more specific wins (dev over team over org). See
+`.claude/CUSTOMIZATION.md` for the full framework and what belongs in
+which layer.
+
+---
+
 ## Stage Expectations
+
+*(See AGENTS.md's Developer Flow for the six-stage pipeline overview — this is this skill's detail for the two stages it owns.)*
 
 ### Feasibility
 
@@ -121,46 +135,7 @@ Go through the spec's Discovery Questions. Skip anything already answered by the
 
 ### Authenticate
 
-Check for credentials in this order:
-1. `{use-case}/.auth.json` — already authenticated (reuse token)
-2. `{use-case}/.env` — credentials saved during setup
-3. `${CLAUDE_PLUGIN_ROOT}/environments/*.env` — pre-configured environments at repo root
-
-If none found, ask the engineer for:
-1. Platform URL
-2. Credentials (username/password or client_id/secret)
-
-**Local Development (username/password):**
-```
-POST /login
-Content-Type: application/json
-
-{"username": "admin", "password": "admin"}
-```
-Returns a token string. Use as query parameter: `GET /endpoint?token=TOKEN`
-
-**Cloud / OAuth (client_credentials):**
-```
-POST /oauth/token
-Content-Type: application/x-www-form-urlencoded
-
-client_id=YOUR_CLIENT_ID
-client_secret=YOUR_CLIENT_SECRET
-grant_type=client_credentials
-```
-Returns `{"access_token": "eyJhbG..."}`. Use as Bearer header.
-
-**Save auth for all downstream skills:**
-```bash
-cat > {use-case}/.auth.json << EOF
-{
-  "platform_url": "https://platform.example.com",
-  "auth_method": "oauth",
-  "token": "eyJhbG...",
-  "timestamp": "2026-03-13T10:00:00Z"
-}
-EOF
-```
+See AGENTS.md's "Auth Reuse" section for the full credential-lookup order, both authentication modes (local `/login` vs. cloud OAuth), and how to save the result to `{use-case}/.auth.json` — this is the canonical procedure, used identically by every skill. One environment-specific addition for this skill: pre-configured environment files at `${CLAUDE_PLUGIN_ROOT}/environments/*.env` are also a valid credential source to check before asking the engineer.
 
 ### Pull Platform Data
 
@@ -222,8 +197,11 @@ For each row in the spec's Capabilities table:
 For each row in the spec's Integrations table:
 - Found + Running? → **✓ Resolved** (record adapter name, app name)
 - Found + Stopped? → **⚠ Warning** (needs to be started)
-- Not found + Required? → **⚠ Blocked** (stop and discuss)
+- Not found, required, adapter unavailable or customer details TBD? → **⚠ Stub** (proceed — Design produces stub artifacts)
+- Not found, required, and nothing can be built without it? → **⚠ Blocked** (stop and discuss)
 - Not found + Not Required? → **✗ Skipped**
+
+**`⚠ Stub` vs `⚠ Blocked`:** Stub means the integration is required but not yet available — delivery proceeds by building stub workflows and placeholder tasks now, activating the real adapter later. Blocked means the entire delivery is gated on resolving this first (e.g., the main workflow can't be designed without data only this adapter provides). Rule of thumb: if at least one component can be built and tested without the adapter, it's Stub, not Blocked.
 
 ### Find Reuse Opportunities
 
@@ -296,6 +274,32 @@ The orchestrator is always the last thing built, after all children are tested.
 │ 3  │ Orchestrator                 │ Parent Workflow     │ Build    │
 └────┴──────────────────────────────┴─────────────────────┴──────────┘
 ```
+
+For every `⚠ Stub` integration, add to the inventory:
+- `integration-model-{name}.json` — OpenAPI 3.0.3 stub spec (Type: Integration Model, Action: Build)
+- `stub-{name}` — stub connectivity workflow (Type: Stub Workflow, Action: Build)
+- `integration-questions.md` — customer questionnaire (Type: Questionnaire, Action: Build — one file covers all pending integrations)
+
+**Producing stub artifacts:**
+
+`integration-model-{name}.json` — OpenAPI 3.0.3, minimal and use-case scoped:
+- `info.title` — the adapter type name as it will appear in Itential (e.g., `Slack`, `AWX`) — this becomes the `app` and `locationType` field values in workflow tasks
+- `info.description` — one line: what this integration does in this use case; append `— STUB: scope TBC with customer` if endpoints aren't yet confirmed
+- `servers[].url` — use a `variables` block for unknown hostnames; add `"description": "STUB: confirm with customer"` to any unknown variable
+- `components.securitySchemes` — mark `description` as `STUB: confirm auth method with customer` if not yet confirmed
+- `paths` — only the operations the stub workflow will call; use accurate schemas where known
+
+`integration-questions.md` — one section per pending integration, three-column table:
+
+| Question | Why needed | Customer answer |
+|----------|-----------|-----------------|
+| Hostname / base URL | Needed to configure the adapter server | |
+| Auth method (bearer / basic / API key) | Determines how credentials are stored | |
+| Token source / how to obtain it | Needed to provision the adapter | |
+| API version or path prefix differences | Affects endpoint wiring in workflows | |
+| Firewall / IP allowlisting requirements | Platform must be able to reach this system | |
+
+Close `integration-questions.md` with a **Next steps** note: once all questions are answered, update each integration model, provision the adapter, and replace placeholder tasks using the as-built activation recipes.
 
 **E. Implementation Plan** — ordered build steps with test method for each
 
@@ -396,7 +400,6 @@ To revise design only: invoke `/solution-architecture design-only` → reads exi
 
 ## Gotchas
 
-- OAuth MUST use `Content-Type: application/x-www-form-urlencoded`, not JSON
-- Tokens expire mid-session — on auth errors, re-authenticate silently from `.env`
+- Tokens expire mid-session — on auth errors, re-authenticate silently from `.env` (see AGENTS.md Auth Reuse)
 - `tasks/list` `app` field has WRONG casing for adapters — use `apps/list`
 - OpenAPI spec is ~1.5MB — search it locally with `jq`, never load into context

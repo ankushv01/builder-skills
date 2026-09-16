@@ -11,6 +11,18 @@ description: Use this skill to start any new automation delivery — when someon
 
 ---
 
+## Customization
+
+Before using this skill, check `custom/org/`, `custom/team/`, and `custom/dev/`
+in this skill's own directory. Read every `.md` file found, in that order
+(any folder may be empty or absent). Apply them in addition to everything
+below — where a file overrides a specific rule from this document, prefer
+the override; more specific wins (dev over team over org). See
+`.claude/CUSTOMIZATION.md` for the full framework and what belongs in
+which layer.
+
+---
+
 ## Stage Expectations
 
 | | |
@@ -110,15 +122,7 @@ Ask: *"Here's your spec. Review it — add, remove, or change anything. When you
 
 Tell the engineer what happens next:
 
-> "Requirements are locked. Here's the rest of the delivery:
->
-> 1. **Feasibility** — The Solution Architecture Agent connects to your platform and assesses what's possible against your approved spec.
-> 2. **Design** — A solution design is produced with exactly what to build, reuse, and skip. You approve it before anything is built.
-> 3. **Build** — The Builder Agent implements the approved design and tests each component individually.
-> 4. **Test** — The QA Agent drafts a test plan from your acceptance criteria, which you approve before anything runs live, then verifies the delivered solution against it with real evidence.
-> 5. **As-Built** — What was actually delivered is recorded, backed by that test evidence, including any deviations and learnings.
->
-> You own approval at Feasibility, Design, and the Test Plan. Nothing gets built or tested live without your sign-off."
+> "Requirements are locked. Next: Feasibility → Design → Build → Test → As-Built — full detail on each stage is in AGENTS.md's Developer Flow. You approve at Feasibility, Design, and the Test Plan; nothing gets built or tested live without your sign-off."
 
 **Artifact-based handoff.** The workspace the Solution Architecture Agent receives:
 

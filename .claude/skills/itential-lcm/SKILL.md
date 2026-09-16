@@ -8,11 +8,23 @@ argument-hint: "[action or resource-name]"
 
 Lifecycle Manager (LCM) provides a declarative framework for managing the lifecycle of reusable resources. Define a resource model (schema + actions), create instances of it, and run workflow-driven actions to create, update, or delete those instances — with full execution history and optional pre/post transformations.
 
+## Customization
+
+Before using this skill, check `custom/org/`, `custom/team/`, and `custom/dev/`
+in this skill's own directory. Read every `.md` file found, in that order
+(any folder may be empty or absent). Apply them in addition to everything
+below — where a file overrides a specific rule from this document, prefer
+the override; more specific wins (dev over team over org). See
+`.claude/CUSTOMIZATION.md` for the full framework and what belongs in
+which layer.
+
+---
+
 ## Concepts
 
 - **Resource Model** — a template defining what a resource looks like (JSON Schema) and what actions can be performed on it. Actions link to workflows.
 - **Resource Instance** — a concrete instantiation of a model. Stores `instanceData` conforming to the model's schema. Tracks state and last action.
-- **Action** — an operation on an instance (create, update, delete, import). Each action can have a workflow, pre-transformation, and post-transformation.
+- **Action** — an operation on an instance (create, update, delete, import). Each action can have a workflow, pre-transformation, and post-transformation. (Note: `/itential-inventory` also has an "Action" concept, meaning an IAG5-service call bound to a node — different meaning, same word.)
 - **Action Execution** — an audit record of running an action. Tracks 3 phases: preTransformation → workflow → postTransformation.
 - **Instance Group** — a collection of instances (manual list or dynamic filter) for bulk operations. Requires `LCM_GROUPS_ENABLED=true`.
 
@@ -342,7 +354,7 @@ The resource model exports (in `${CLAUDE_PLUGIN_ROOT}/helpers/assets/lcm/`) show
 2. Read model's schema.required BEFORE building Create workflow
    jq '.schema.required' helpers/assets/lcm/<model>.json  -- every field here must be in the instance merge task
 3. Create workflows for each action in /itential-studio
-   Create action: instance-write merge task must cover ALL schema.required fields (missing one = orphaned resources)
+   Create action: instance-write merge task must cover every schema.required field (see Gotchas above)
 4. PUT /lifecycle-manager/resources/{id}                → update actions with workflow IDs
 5. POST /lifecycle-manager/resources/{id}/actions/validate → verify actions are valid
 ```

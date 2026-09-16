@@ -10,12 +10,24 @@ JSON Forms are reusable form definitions stored in the `json-forms` application.
 
 A form is a single document with four cooperating schemas — `struct` (UI rendering), `schema` (data contract / validation), `uiSchema` (per-field widget hints), and `bindingSchema` (live-data binding for REST dropdowns). Get the relationships wrong and the form will render but break silently at runtime.
 
+## Customization
+
+Before using this skill, check `custom/org/`, `custom/team/`, and `custom/dev/`
+in this skill's own directory. Read every `.md` file found, in that order
+(any folder may be empty or absent). Apply them in addition to everything
+below — where a file overrides a specific rule from this document, prefer
+the override; more specific wins (dev over team over org). See
+`.claude/CUSTOMIZATION.md` for the full framework and what belongs in
+which layer.
+
+---
+
 ## Concepts
 
 - **`struct`** — the UI definition. `struct.type` is always `"array"`; `struct.items[]` is the list of fields. `customKey` on each field becomes the property key in `schema` and the variable key when the form's data is consumed.
 - **`schema`** — the data contract. `schema.properties.<customKey>` must exist for every field in `struct.items[]` (and stay in sync with the field's type, enum values, etc.). `schema.required` lists mandatory `customKey`s.
 - **`uiSchema`** — per-`customKey` widget hints: placeholder text, `ui:widget` overrides, disabled flags. Required for cascading dropdowns (see below).
-- **`bindingSchema`** — empty `{}` for static-enum forms. Required (and non-trivial) for REST-bound dropdowns: every REST-bound field needs a mirroring `bindingSchema.properties.<customKey>` entry. Studio fills this in invisibly through the GUI; the server does not.
+- **`bindingSchema`** — empty `{}` for static-enum forms; see REST-bound dropdowns below for the mirroring requirement when a field is REST-bound.
 - **Static vs. REST-bound dropdowns** — static dropdowns hardcode the list via `enum`/`enumNames`. REST-bound dropdowns pull options live from an IAP endpoint at form-render time.
 - **Cascading dropdowns** (aka **field dependency** in the Studio UI) — a REST-bound dropdown whose URL path parameter is filled from another field's current value. The dependent field re-fetches when the source field changes.
 

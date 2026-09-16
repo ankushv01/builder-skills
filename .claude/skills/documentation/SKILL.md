@@ -9,6 +9,18 @@ description: Use this skill to survey and catalog an Itential platform — when 
 **Output:** `customer-spec.md` (inferred HLD per use case) + `solution-design.md` (as-built LLD per use case) + `README.md` (master index, only when multiple use cases)
 **Feeds into:** Can be handed to `/spec-agent` for refinement or `/solution-arch-agent` for redesign
 
+## Customization
+
+Before using this skill, check `custom/org/`, `custom/team/`, and `custom/dev/`
+in this skill's own directory. Read every `.md` file found, in that order
+(any folder may be empty or absent). Apply them in addition to everything
+below — where a file overrides a specific rule from this document, prefer
+the override; more specific wins (dev over team over org). See
+`.claude/CUSTOMIZATION.md` for the full framework and what belongs in
+which layer.
+
+---
+
 ## CRITICAL: Output Requirements
 
 **The ONLY deliverables are markdown files.** Do NOT produce JSON index files, JSON catalogs, or any intermediate artifacts. All analysis happens in-memory.
@@ -131,7 +143,7 @@ GET /lifecycle-manager/model
 GET /automation-studio/projects?limit=500
 ```
 
-> **Visibility caveat:** Global Automation Studio assets (the focus of this skill) are **not** access-restricted by ACL — they are visible to any authenticated client, so list endpoints like `GET /automation-studio/workflows?exclude-project-members=true` return the complete global set regardless of the calling client. The catalog of *globals* is therefore not undercounted by RBAC. The one exception in the list above is `GET /automation-studio/projects?limit=500`, which **is** filtered by per-project ACLs (each project must explicitly grant access to a user or group; there is no platform-wide admin or "all-projects" role). Since this skill targets global assets, projects are out of scope by default — but if the engineer names a specific project they expect, route to `/project-to-spec`, which handles visibility-vs-existence properly.
+> **Visibility caveat:** see AGENTS.md's "Project Visibility" section. Global assets (this skill's focus) aren't ACL-restricted, so the global catalog isn't undercounted by RBAC — but `GET /automation-studio/projects?limit=500` is per-project-ACL-filtered. Since this skill targets globals, projects are out of scope by default; if the engineer names a specific project they expect, route to `/project-to-spec` instead.
 
 ### Classification Signatures
 
@@ -340,7 +352,7 @@ POST /automation-studio/projects/{projectId}/components/add
 }
 ```
 
-Component type values: `workflow`, `template`, `transformation`, `jsonForm`, `mopCommandTemplate`, `mopAnalyticTemplate`
+Component type values: see AGENTS.md Rule 13.
 
 **3. Build a reference impact report before moving anything:**
 
@@ -401,7 +413,7 @@ Flag anything that couldn't be moved (already in a project, API error) for manua
 
 ## Gotchas
 
-- **Global assets are not access-restricted; projects are.** Global Automation Studio assets (the focus of this skill) are visible to any authenticated client — RBAC does not undercount the global catalog. The `/automation-studio/projects` list, however, **is** filtered by per-project ACL (every project must explicitly grant a user or group; there is no platform-wide admin or "all-projects" role). For documenting *globals*, this is mostly out of scope; if the engineer names a specific project they expect, route to `/project-to-spec` rather than declaring it absent.
+- **Global assets are not access-restricted; projects are** (see AGENTS.md Project Visibility). If the engineer names a specific project they expect, route to `/project-to-spec` rather than declaring it absent.
 - **NEVER produce JSON files as output.** Only markdown reports.
 - **childJob `workflow` is the primary relationship link.** Don't trace `$var` references across workflows.
 - **Naming prefix is a heuristic, not a rule.** Prioritize childJob graph over naming when they conflict.
@@ -409,4 +421,3 @@ Flag anything that couldn't be moved (already in a project, API error) for manua
 - **Not every asset connects.** Don't force them into groups — catalog in Shared Utilities or Reference.
 - **When unsure about golden config or LCM relationships**, ask the engineer rather than guessing.
 - **Master README is only for multiple use cases.** Single use case → write files directly in reports directory, no subdirectory, no README.
-- **Task descriptions and summaries are the best source of intent** — use them heavily.

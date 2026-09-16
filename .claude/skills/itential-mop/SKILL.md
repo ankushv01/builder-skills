@@ -8,7 +8,19 @@ argument-hint: "[action or template-name]"
 
 MOP manages command templates and analytic templates for running CLI commands against network devices with validation rules. Command templates execute show commands and evaluate the output against rules. Analytic templates compare command output before and after a change.
 
-**MOP is for read-only validation only -- never use it to push configuration to devices.** Use Jinja2 templates and workflow tasks for config changes.
+**MOP is for read-only validation only -- never use it to push configuration to devices.** Use Jinja2 templates and workflow tasks for config changes — see `/itential-devices` (Template Designer) or the environment's native config-push task (AGENTS.md Rule 25).
+
+## Customization
+
+Before using this skill, check `custom/org/`, `custom/team/`, and `custom/dev/`
+in this skill's own directory. Read every `.md` file found, in that order
+(any folder may be empty or absent). Apply them in addition to everything
+below — where a file overrides a specific rule from this document, prefer
+the override; more specific wins (dev over team over org). See
+`.claude/CUSTOMIZATION.md` for the full framework and what belongs in
+which layer.
+
+---
 
 ## Concepts
 
